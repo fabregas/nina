@@ -1,5 +1,7 @@
 # Nina Framework 🚀
 
+![logo](https://github.com/fabregas/nina/blob/main/logo.png?raw=true)
+
 Nina is a lightweight, fast, and declarative UI framework for building Single Page Applications (SPAs) in Go using WebAssembly.
 
 Instead of writing your frontend in JavaScript/TypeScript and struggling to keep types synchronized with your backend, Nina allows you to build robust, type-safe, and highly responsive interfaces entirely in pure Go.
