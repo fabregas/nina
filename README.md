@@ -40,7 +40,7 @@ import (
 	"time"
 
     // Import the exact package folder
-	"[github.com/fabregas/nina/nn](https://github.com/fabregas/nina/nn)"
+	"github.com/fabregas/nina/nn"
 )
 
 type Dashboard struct {
