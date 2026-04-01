@@ -1,4 +1,4 @@
-# Nina Framework 🚀
+# Nina Framework ⚡
 
 ![logo](https://github.com/fabregas/nina/blob/main/logo.png?raw=true)
 
