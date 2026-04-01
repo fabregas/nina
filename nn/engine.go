@@ -103,6 +103,8 @@ func Update(c Component) { nina.scheduleUpdate(c) }
 
 // entry point
 func Mount(containerID string, root Component) {
+	initHistory()
+
 	nina.rootComponent = root
 	nina.rootContainer = document.Call("getElementById", containerID)
 

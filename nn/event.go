@@ -30,3 +30,15 @@ func (e Event) TargetValue() string {
 	}
 	return target.Get("value").String()
 }
+
+func (e Event) TargetChecked() bool {
+	if e.jsEvent.IsUndefined() || e.jsEvent.IsNull() {
+		return false
+	}
+	target := e.jsEvent.Get("target")
+	if target.IsUndefined() || target.IsNull() {
+		return false
+	}
+
+	return target.Get("checked").Bool()
+}

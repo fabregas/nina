@@ -72,7 +72,7 @@ func (d *Dashboard) View() *nn.Element {
 		nn.Button().
 			Class("bg-blue-500 text-white px-4 py-2 mt-4 rounded").
 			Text("Click Me").
-			OnClick(func() {
+			OnClick(func(nn.Event) {
 				d.clicks++
 				// No need to call nn.Update here! 
 				// Nina automatically schedules a batched UI update after any event handler.

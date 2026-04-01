@@ -1,6 +1,8 @@
 package nn
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 	"syscall/js"
 )
@@ -8,7 +10,6 @@ import (
 // Element represent any HTML tag
 type Element struct {
 	tag       string
-	id        string
 	classes   string
 	attrs     map[string]string
 	listeners map[string]func(Event) // event listeners
@@ -47,11 +48,6 @@ func (e *Element) addListener(event string, lf func(Event)) {
 	e.listeners[event] = lf
 }
 
-func (e *Element) ID(id string) *Element {
-	e.id = id
-	return e
-}
-
 func (e *Element) Key(key string) *Element {
 	e.key = key
 	return e
@@ -68,10 +64,44 @@ func (e *Element) Class(classes ...string) *Element {
 	return e
 }
 
-func (e *Element) Attrs(key, value string) *Element {
+func (e *Element) Attr(key, value string) *Element {
 	e.addAttr(key, value)
 	return e
 }
+
+func (e *Element) BoolAttr(name string, condition bool) *Element {
+	if condition {
+		return e.Attr(name, "")
+	}
+	return e
+}
+
+func (e *Element) ID(id string) *Element         { return e.Attr("id", id) }
+func (e *Element) Href(href string) *Element     { return e.Attr("href", href) }
+func (e *Element) Src(src string) *Element       { return e.Attr("src", src) }
+func (e *Element) Alt(alt string) *Element       { return e.Attr("alt", alt) }
+func (e *Element) Type(t string) *Element        { return e.Attr("type", t) }
+func (e *Element) Value(v string) *Element       { return e.Attr("value", v) }
+func (e *Element) Placeholder(p string) *Element { return e.Attr("placeholder", p) }
+func (e *Element) Disabled(d bool) *Element      { return e.BoolAttr("disabled", d) }
+func (e *Element) Checked(c bool) *Element       { return e.BoolAttr("checked", c) }
+
+// for passing inline-styles as string "color: red; margin: 10px;"
+func (e *Element) Style(css string) *Element { return e.Attr("style", css) }
+
+func (e *Element) On(eventName string, handler func(Event)) *Element {
+	e.addListener(eventName, handler)
+	return e
+}
+
+func (e *Element) OnInput(handler func(Event)) *Element      { return e.On("input", handler) }
+func (e *Element) OnChange(handler func(Event)) *Element     { return e.On("change", handler) }
+func (e *Element) OnSubmit(handler func(Event)) *Element     { return e.On("submit", handler) }
+func (e *Element) OnKeyDown(handler func(Event)) *Element    { return e.On("keydown", handler) }
+func (e *Element) OnKeyUp(handler func(Event)) *Element      { return e.On("keyup", handler) }
+func (e *Element) OnMouseEnter(handler func(Event)) *Element { return e.On("mouseenter", handler) }
+func (e *Element) OnMouseLeave(handler func(Event)) *Element { return e.On("mouseleave", handler) }
+func (e *Element) OnClick(handler func(Event)) *Element      { return e.On("click", handler) }
 
 func (e *Element) Children(children ...Node) *Element {
 	for _, n := range children {
@@ -82,33 +112,42 @@ func (e *Element) Children(children ...Node) *Element {
 	return e
 }
 
+func (e *Element) Bind(target any) *Element {
+	switch ptr := target.(type) {
+	case *string:
+		e.Value(*ptr)
+		e.OnInput(func(ev Event) {
+			*ptr = ev.TargetValue()
+		})
+
+	case *int:
+		e.Value(fmt.Sprintf("%d", *ptr))
+		e.OnInput(func(ev Event) {
+			val, err := strconv.Atoi(ev.TargetValue())
+			if err == nil {
+				*ptr = val
+			}
+		})
+
+	case *bool:
+		e.Checked(*ptr)
+		e.OnChange(func(ev Event) {
+			*ptr = ev.TargetChecked()
+		})
+
+	default:
+		// FAIL FAST
+		panic(fmt.Sprintf(
+			"[Nina Framework] Critical Error in Bind(): expected a pointer to a basic type (*string, *int, *bool), but got %T",
+			target,
+		))
+	}
+
+	return e
+}
+
 func (e *Element) Text(text string) *Element {
 	e.children = append(e.children, &TextNode{value: text})
-	return e
-}
-
-func (e *Element) OnClick(handler func()) *Element {
-	e.addListener("click", func(event Event) { handler() })
-	return e
-}
-
-func (e *Element) OnClickEvent(handler func(Event)) *Element {
-	e.addListener("click", handler)
-	return e
-}
-
-func (e *Element) Value(val string) *Element {
-	e.addAttr("value", val)
-	return e
-}
-
-func (e *Element) OnInput(handler func(string)) *Element {
-	e.addListener("input", func(event Event) {
-		val := event.TargetValue()
-
-		handler(val)
-	})
-
 	return e
 }
 
@@ -129,30 +168,4 @@ func (t *TextNode) getKey() string {
 
 func (t *TextNode) isNil() bool {
 	return t == nil
-}
-
-////////////
-
-func Text(v string) *TextNode {
-	return &TextNode{value: v}
-}
-
-func Div() *Element {
-	return &Element{tag: "div"}
-}
-
-func H1() *Element {
-	return &Element{tag: "h1"}
-}
-
-func Input() *Element {
-	return &Element{tag: "input"}
-}
-
-func A() *Element {
-	return &Element{tag: "a"}
-}
-
-func Button() *Element {
-	return &Element{tag: "button"}
 }
