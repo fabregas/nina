@@ -237,3 +237,21 @@ func (d *defaultNotFound) View() *Element {
 				),
 		)
 }
+
+type redirectComp struct {
+	Target string
+}
+
+func (c *redirectComp) View() *Element {
+	return Div()
+}
+
+func (c *redirectComp) OnMount() {
+	go func() {
+		Navigate(c.Target)
+	}()
+}
+
+func Redirect(target string) *redirectComp {
+	return &redirectComp{Target: target}
+}

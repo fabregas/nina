@@ -64,6 +64,10 @@ func (e *Element) Class(classes ...string) *Element {
 	return e
 }
 
+func (e *Element) ClassFunc(f func() string) *Element {
+	return e.Class(f())
+}
+
 func (e *Element) Attr(key, value string) *Element {
 	e.addAttr(key, value)
 	return e

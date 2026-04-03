@@ -374,6 +374,8 @@ func destroy(node Node) {
 		}
 
 	case *ComponentNode:
+		Storage.unwatchAll(n.comp)
+
 		nina.unregisterComp(n.comp)
 
 		if d, ok := n.comp.(Destroyer); ok {
