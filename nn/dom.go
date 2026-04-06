@@ -40,9 +40,13 @@ func createDOM(vnode Node) js.Value {
 		}
 
 		// 2. add event listeners
-		for eventName, handler := range n.listeners {
+		for eventName, _ := range n.listeners {
 			// wrapper that calls handler() and schedule DOM update
 			cb := js.FuncOf(func(this js.Value, args []js.Value) any {
+				handler := n.listeners[eventName]
+				if handler == nil {
+					return nil
+				}
 				var goEvent Event
 				if len(args) > 0 {
 					goEvent = Event{jsEvent: args[0]}
@@ -53,7 +57,7 @@ func createDOM(vnode Node) js.Value {
 				return nil
 			})
 			el.Call("addEventListener", eventName, cb)
-			n.activeCallbacks = append(n.activeCallbacks, cb)
+			n.activeCallbacks[eventName] = cb
 		}
 
 		// 3. add children recursively
@@ -175,7 +179,7 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 	case *Element:
 		newEl := newNode.(*Element)
 		newEl.domNode = old.domNode
-		newEl.activeCallbacks = old.activeCallbacks
+		patchEvents(old.domNode, old, newEl)
 
 		// 1. update attributes
 		patchClasses(old.domNode, old.classes, newEl.classes)
@@ -210,6 +214,54 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 
 		patch(parentDOM, old.lastRender, newComp.lastRender)
 	}
+}
+
+func patchEvents(domEl js.Value, oldE *Element, newE *Element) {
+	if len(oldE.listeners) == 0 && len(newE.listeners) == 0 {
+		return
+	}
+
+	if oldE.listeners == nil {
+		oldE.listeners = make(map[string]func(Event))
+		oldE.activeCallbacks = make(map[string]js.Func)
+	}
+
+	for eventName, newHandler := range newE.listeners {
+		if _, exists := oldE.listeners[eventName]; !exists {
+			cb := js.FuncOf(func(this js.Value, args []js.Value) any {
+				handler := oldE.listeners[eventName]
+				if handler != nil {
+					var goEvent Event
+					if len(args) > 0 {
+						goEvent = Event{jsEvent: args[0]}
+					}
+					handler(goEvent)
+					nina.scheduleUpdate(nil)
+				}
+				return nil
+			})
+
+			domEl.Call("addEventListener", eventName, cb)
+
+			oldE.activeCallbacks[eventName] = cb
+		}
+
+		oldE.listeners[eventName] = newHandler
+	}
+
+	// remove old listeners
+	for eventName, cb := range oldE.activeCallbacks {
+		if _, exists := newE.listeners[eventName]; !exists {
+			domEl.Call("removeEventListener", eventName, cb)
+			cb.Release()
+
+			delete(oldE.activeCallbacks, eventName)
+			delete(oldE.listeners, eventName)
+		}
+	}
+
+	newE.activeCallbacks = oldE.activeCallbacks
+	newE.listeners = oldE.listeners
 }
 
 func patchChildren(parentDOM js.Value, oldChilds, newChilds []Node) {

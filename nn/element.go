@@ -20,7 +20,7 @@ type Element struct {
 	// this value will be setup after first render
 	domNode js.Value
 
-	activeCallbacks []js.Func
+	activeCallbacks map[string]js.Func
 }
 
 func (e *Element) isNode() {}
@@ -43,6 +43,7 @@ func (e *Element) addAttr(key, val string) {
 func (e *Element) addListener(event string, lf func(Event)) {
 	if e.listeners == nil {
 		e.listeners = make(map[string]func(Event))
+		e.activeCallbacks = make(map[string]js.Func)
 	}
 
 	e.listeners[event] = lf
@@ -105,6 +106,8 @@ func (e *Element) OnKeyDown(handler func(Event)) *Element    { return e.On("keyd
 func (e *Element) OnKeyUp(handler func(Event)) *Element      { return e.On("keyup", handler) }
 func (e *Element) OnMouseEnter(handler func(Event)) *Element { return e.On("mouseenter", handler) }
 func (e *Element) OnMouseLeave(handler func(Event)) *Element { return e.On("mouseleave", handler) }
+func (e *Element) OnMouseOver(handler func(Event)) *Element  { return e.On("mouseover", handler) }
+func (e *Element) OnMouseOut(handler func(Event)) *Element   { return e.On("mouseout", handler) }
 func (e *Element) OnClick(handler func(Event)) *Element      { return e.On("click", handler) }
 
 func (e *Element) Children(children ...Node) *Element {
