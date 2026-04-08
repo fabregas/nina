@@ -81,6 +81,10 @@ func createDOM(vnode Node) js.Value {
 		return el
 
 	case *ComponentNode:
+		if carrier, ok := n.comp.(stateCarrier); ok {
+			carrier.importState(nil)
+		}
+
 		n.lastRender = n.comp.View()
 
 		nina.registerComp(n.comp, n)
@@ -200,7 +204,11 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 		patchAttributes(old.domNode, old.attrs, newEl.attrs)
 
 		// 2. update children
-		patchChildren(old.domNode, old.children, newEl.children)
+		if old.rawHTML != "" {
+			old.domNode.Set("innerHTML", newEl.rawHTML)
+		} else {
+			patchChildren(old.domNode, old.children, newEl.children)
+		}
 
 	case *ComponentNode:
 		newComp := newNode.(*ComponentNode)
@@ -211,6 +219,13 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 			nina.unregisterComp(oldComp.comp)
 		}
 		nina.registerComp(newComp.comp, newComp)
+
+		if newCarrier, ok := newComp.comp.(stateCarrier); ok {
+			oldCarrier := oldComp.comp.(stateCarrier)
+
+			// copy old state into new component
+			newCarrier.importState(oldCarrier.exportState())
+		}
 
 		if pureComp, ok := newComp.comp.(Pure); ok {
 			newHash := pureComp.Hash()
