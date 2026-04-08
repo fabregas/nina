@@ -14,6 +14,7 @@ type Element struct {
 	attrs     map[string]string
 	listeners map[string]func(Event) // event listeners
 	children  []Node
+	rawHTML   string
 	key       string
 
 	// reference to real HTML element in browser
@@ -21,6 +22,12 @@ type Element struct {
 	domNode js.Value
 
 	activeCallbacks map[string]js.Func
+}
+
+var globalClassPreprocessor func(string) string
+
+func SetGlobalClassPreprocessor(f func(string) string) {
+	globalClassPreprocessor = f
 }
 
 func (e *Element) isNode() {}
@@ -47,6 +54,19 @@ func (e *Element) addListener(event string, lf func(Event)) {
 	}
 
 	e.listeners[event] = lf
+}
+
+func (e *Element) compClasses() {
+	if globalClassPreprocessor == nil {
+		return
+	}
+
+	e.classes = globalClassPreprocessor(e.classes)
+}
+
+func (e *Element) InnerHTML(html string) *Element {
+	e.rawHTML = html
+	return e
 }
 
 func (e *Element) Key(key string) *Element {

@@ -31,6 +31,10 @@ func (e Event) TargetValue() string {
 	return target.Get("value").String()
 }
 
+func (e Event) Raw() js.Value {
+	return e.jsEvent
+}
+
 func (e Event) TargetChecked() bool {
 	if e.jsEvent.IsUndefined() || e.jsEvent.IsNull() {
 		return false

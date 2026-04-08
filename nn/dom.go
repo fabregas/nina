@@ -12,7 +12,14 @@ var (
 )
 
 func createElement(tag string) js.Value {
-	return document.Call("createElement", tag)
+	// maybe switch?
+	isSVG := tag == "svg" || tag == "path" || tag == "circle" || tag == "rect" || tag == "g"
+
+	if isSVG {
+		return document.Call("createElementNS", "http://www.w3.org/2000/svg", tag)
+	} else {
+		return document.Call("createElement", tag)
+	}
 }
 
 func createTextNode(text string) js.Value {
@@ -33,7 +40,8 @@ func createDOM(vnode Node) js.Value {
 
 		// 1. set classes and attributes
 		if n.classes != "" {
-			el.Set("className", n.classes)
+			n.compClasses()
+			el.Call("setAttribute", "class", n.classes)
 		}
 		for key, val := range n.attrs {
 			el.Call("setAttribute", key, val)
@@ -60,10 +68,14 @@ func createDOM(vnode Node) js.Value {
 			n.activeCallbacks[eventName] = cb
 		}
 
-		// 3. add children recursively
-		for _, child := range n.children {
-			childDOM := createDOM(child)
-			el.Call("appendChild", childDOM)
+		// 3. add children
+		if n.rawHTML != "" {
+			el.Set("innerHTML", n.rawHTML)
+		} else {
+			for _, child := range n.children {
+				childDOM := createDOM(child)
+				el.Call("appendChild", childDOM)
+			}
 		}
 
 		return el
@@ -182,6 +194,8 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 		patchEvents(old.domNode, old, newEl)
 
 		// 1. update attributes
+
+		newEl.compClasses()
 		patchClasses(old.domNode, old.classes, newEl.classes)
 		patchAttributes(old.domNode, old.attrs, newEl.attrs)
 
@@ -378,8 +392,8 @@ func patchAttributes(domNode js.Value, oldAttrs, newAttrs map[string]string) {
 func setAttribute(domNode js.Value, key, val string) {
 	//fmt.Println("set attribute ", key, val)
 	switch key {
-	case "class":
-		domNode.Set("className", val)
+	case "className":
+		domNode.Call("setAttribute", "class", val)
 	case "value":
 		// for <input> and <textarea> we chould change DOM attribute value,
 		// bcs setAttribute changes only initial value

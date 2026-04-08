@@ -79,6 +79,19 @@ func Tr() *Element    { return Tag("tr") }
 func Th() *Element    { return Tag("th") }
 func Td() *Element    { return Tag("td") }
 
+// ==========================================
+// (svg)
+// ==========================================
+func Svg() *Element  { return Tag("svg") }
+func Path() *Element { return Tag("path") }
+
 func Text(v string) *TextNode {
 	return &TextNode{value: v}
+}
+
+func Raw(htmlString string) *Element {
+	e := Tag("span")
+	e.rawHTML = htmlString
+	e.Attr("display", "contents")
+	return e
 }
