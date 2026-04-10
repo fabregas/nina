@@ -7,6 +7,10 @@ type Node interface {
 	isNil() bool
 }
 
+type IntoNode interface {
+	ToNode() Node
+}
+
 func isNilNode(n Node) bool {
 	return n == nil || n.isNil()
 }

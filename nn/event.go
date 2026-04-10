@@ -20,6 +20,25 @@ func (e Event) StopPropagation() {
 	}
 }
 
+func (e Event) CurrentTarget() js.Value {
+	var ret js.Value
+
+	if !e.jsEvent.IsUndefined() && !e.jsEvent.IsNull() {
+		ret = e.jsEvent.Get("currentTarget")
+	}
+
+	return ret
+}
+func (e Event) Target() js.Value {
+	var ret js.Value
+
+	if !e.jsEvent.IsUndefined() && !e.jsEvent.IsNull() {
+		ret = e.jsEvent.Get("target")
+	}
+
+	return ret
+}
+
 func (e Event) TargetValue() string {
 	if e.jsEvent.IsUndefined() || e.jsEvent.IsNull() {
 		return ""

@@ -31,6 +31,10 @@ func (c *ComponentNode) Key(key string) *ComponentNode {
 	return c
 }
 
+func (c *ComponentNode) ToNode() Node {
+	return c
+}
+
 func C(comp Component) *ComponentNode {
 	return &ComponentNode{
 		comp: comp,

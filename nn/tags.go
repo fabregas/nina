@@ -71,13 +71,14 @@ func Legend() *Element   { return Tag("legend") }
 // ==========================================
 // (Tables)
 // ==========================================
-func Table() *Element { return Tag("table") }
-func Thead() *Element { return Tag("thead") }
-func Tbody() *Element { return Tag("tbody") }
-func Tfoot() *Element { return Tag("tfoot") }
-func Tr() *Element    { return Tag("tr") }
-func Th() *Element    { return Tag("th") }
-func Td() *Element    { return Tag("td") }
+func Table() *Element   { return Tag("table") }
+func Thead() *Element   { return Tag("thead") }
+func Tbody() *Element   { return Tag("tbody") }
+func Tfoot() *Element   { return Tag("tfoot") }
+func Tr() *Element      { return Tag("tr") }
+func Th() *Element      { return Tag("th") }
+func Td() *Element      { return Tag("td") }
+func Caption() *Element { return Tag("caption") }
 
 // ==========================================
 // (svg)
@@ -92,6 +93,5 @@ func Text(v string) *TextNode {
 func Raw(htmlString string) *Element {
 	e := Tag("span")
 	e.rawHTML = htmlString
-	e.Attr("display", "contents")
 	return e
 }

@@ -37,6 +37,9 @@ func createDOM(vnode Node) js.Value {
 	case *Element:
 		el := createElement(n.tag)
 		n.domNode = el
+		if n.ref != nil {
+			n.ref.Current = el
+		}
 
 		// 1. set classes and attributes
 		if n.classes != "" {
@@ -48,10 +51,10 @@ func createDOM(vnode Node) js.Value {
 		}
 
 		// 2. add event listeners
-		for eventName, _ := range n.listeners {
+		for eventInfo, _ := range n.listeners {
 			// wrapper that calls handler() and schedule DOM update
 			cb := js.FuncOf(func(this js.Value, args []js.Value) any {
-				handler := n.listeners[eventName]
+				handler := n.listeners[eventInfo]
 				if handler == nil {
 					return nil
 				}
@@ -64,8 +67,12 @@ func createDOM(vnode Node) js.Value {
 				nina.scheduleUpdate(nil)
 				return nil
 			})
-			el.Call("addEventListener", eventName, cb)
-			n.activeCallbacks[eventName] = cb
+			if eventInfo.isGlobal {
+				document.Call("addEventListener", eventInfo.name, cb)
+			} else {
+				el.Call("addEventListener", eventInfo.name, cb)
+			}
+			n.activeCallbacks[eventInfo] = cb
 		}
 
 		// 3. add children
@@ -92,10 +99,27 @@ func createDOM(vnode Node) js.Value {
 		dom := createDOM(n.lastRender)
 
 		if m, ok := n.comp.(Mounter); ok {
-			m.OnMount()
+			nina.scheduleMount(m.OnMount)
 		}
 
 		return dom
+
+	case *PortalNode:
+		targetDOM := document.Call("querySelector", n.targetSelector)
+
+		if targetDOM.IsNull() || targetDOM.IsUndefined() {
+			panic("Portal target not found: " + n.targetSelector)
+		}
+
+		var childDOM js.Value
+		if n.child != nil {
+			childDOM = createDOM(n.child)
+			targetDOM.Call("appendChild", childDOM)
+		}
+		n.domNode = childDOM
+		n.placeholderNode = document.Call("createComment", "portal-placeholder")
+
+		return n.placeholderNode
 	default:
 		panic("unknown node type")
 	}
@@ -112,6 +136,9 @@ func getDOMNode(vnode Node) js.Value {
 			return js.Undefined()
 		}
 		return n.lastRender.domNode
+	case *PortalNode:
+		return n.placeholderNode
+
 	default:
 		return js.Undefined()
 	}
@@ -195,6 +222,9 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 	case *Element:
 		newEl := newNode.(*Element)
 		newEl.domNode = old.domNode
+		if newEl.ref != nil {
+			newEl.ref.Current = old.domNode
+		}
 		patchEvents(old.domNode, old, newEl)
 
 		// 1. update attributes
@@ -242,6 +272,12 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 		newComp.lastRender = newComp.comp.View()
 
 		patch(parentDOM, old.lastRender, newComp.lastRender)
+	case *PortalNode:
+		newPortal := newNode.(*PortalNode)
+		newPortal.domNode = old.domNode
+		newPortal.placeholderNode = old.placeholderNode
+
+		patchChildren(old.domNode, []Node{old.child}, []Node{newPortal.child})
 	}
 }
 
@@ -251,14 +287,14 @@ func patchEvents(domEl js.Value, oldE *Element, newE *Element) {
 	}
 
 	if oldE.listeners == nil {
-		oldE.listeners = make(map[string]func(Event))
-		oldE.activeCallbacks = make(map[string]js.Func)
+		oldE.listeners = make(map[eventInfo]func(Event))
+		oldE.activeCallbacks = make(map[eventInfo]js.Func)
 	}
 
-	for eventName, newHandler := range newE.listeners {
-		if _, exists := oldE.listeners[eventName]; !exists {
+	for eventInfo, newHandler := range newE.listeners {
+		if _, exists := oldE.listeners[eventInfo]; !exists {
 			cb := js.FuncOf(func(this js.Value, args []js.Value) any {
-				handler := oldE.listeners[eventName]
+				handler := oldE.listeners[eventInfo]
 				if handler != nil {
 					var goEvent Event
 					if len(args) > 0 {
@@ -270,22 +306,30 @@ func patchEvents(domEl js.Value, oldE *Element, newE *Element) {
 				return nil
 			})
 
-			domEl.Call("addEventListener", eventName, cb)
+			if eventInfo.isGlobal {
+				document.Call("addEventListener", eventInfo.name, cb)
+			} else {
+				domEl.Call("addEventListener", eventInfo.name, cb)
+			}
 
-			oldE.activeCallbacks[eventName] = cb
+			oldE.activeCallbacks[eventInfo] = cb
 		}
 
-		oldE.listeners[eventName] = newHandler
+		oldE.listeners[eventInfo] = newHandler
 	}
 
 	// remove old listeners
-	for eventName, cb := range oldE.activeCallbacks {
-		if _, exists := newE.listeners[eventName]; !exists {
-			domEl.Call("removeEventListener", eventName, cb)
+	for eventInfo, cb := range oldE.activeCallbacks {
+		if _, exists := newE.listeners[eventInfo]; !exists {
+			if eventInfo.isGlobal {
+				document.Call("removeEventListener", eventInfo.name, cb)
+			} else {
+				domEl.Call("removeEventListener", eventInfo.name, cb)
+			}
 			cb.Release()
 
-			delete(oldE.activeCallbacks, eventName)
-			delete(oldE.listeners, eventName)
+			delete(oldE.activeCallbacks, eventInfo)
+			delete(oldE.listeners, eventInfo)
 		}
 	}
 
@@ -445,7 +489,10 @@ func destroy(node Node) {
 
 	switch n := node.(type) {
 	case *Element:
-		for _, cb := range n.activeCallbacks {
+		for i, cb := range n.activeCallbacks {
+			if i.isGlobal {
+				document.Call("removeEventListener", i.name, cb)
+			}
 			cb.Release()
 		}
 		n.activeCallbacks = nil
@@ -465,6 +512,14 @@ func destroy(node Node) {
 
 		if n.lastRender != nil {
 			destroy(n.lastRender)
+		}
+	case *PortalNode:
+		if n.child != nil {
+			destroy(n.child)
+		}
+
+		if !n.domNode.IsNull() && !n.domNode.IsUndefined() {
+			n.domNode.Call("remove")
 		}
 	}
 }

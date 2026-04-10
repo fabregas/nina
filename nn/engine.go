@@ -11,6 +11,7 @@ type engine struct {
 	mu              sync.Mutex
 	registry        map[Component]*ComponentNode
 	dirtyComponents map[Component]bool
+	mountQueue      []func()
 	updateScheduled bool
 	renderCallback  js.Func
 
@@ -60,6 +61,10 @@ func (e *engine) scheduleUpdate(c Component) {
 	}
 }
 
+func (e *engine) scheduleMount(f func()) {
+	e.mountQueue = append(e.mountQueue, f)
+}
+
 func (e *engine) performUpdates() {
 	//t0 := time.Now()
 	//defer func() {
@@ -79,23 +84,27 @@ func (e *engine) performUpdates() {
 		e.lastGlobalTree = newTree
 
 		// just exit, everything is re-rendered
-		return
-	}
+	} else {
+		for comp := range queue {
+			e.mu.Lock()
+			node, exists := e.registry[comp]
+			e.mu.Unlock()
 
-	for comp := range queue {
-		e.mu.Lock()
-		node, exists := e.registry[comp]
-		e.mu.Unlock()
+			if !exists || node == nil {
+				continue
+			}
 
-		if !exists || node == nil {
-			continue
+			// local patch
+			newRender := node.comp.View()
+			patch(node.parentDOM, node.lastRender, newRender)
+			node.lastRender = newRender
 		}
-
-		// local patch
-		newRender := node.comp.View()
-		patch(node.parentDOM, node.lastRender, newRender)
-		node.lastRender = newRender
 	}
+
+	for _, onMountCb := range e.mountQueue {
+		onMountCb()
+	}
+	e.mountQueue = nil
 }
 
 // schedule component re-render

@@ -12,7 +12,7 @@ type Element struct {
 	tag       string
 	classes   string
 	attrs     map[string]string
-	listeners map[string]func(Event) // event listeners
+	listeners map[eventInfo]func(Event)
 	children  []Node
 	rawHTML   string
 	key       string
@@ -20,8 +20,14 @@ type Element struct {
 	// reference to real HTML element in browser
 	// this value will be setup after first render
 	domNode js.Value
+	ref     *Ref
 
-	activeCallbacks map[string]js.Func
+	activeCallbacks map[eventInfo]js.Func
+}
+
+type eventInfo struct {
+	name     string
+	isGlobal bool
 }
 
 var globalClassPreprocessor func(string) string
@@ -40,6 +46,11 @@ func (e *Element) isNil() bool {
 	return e == nil
 }
 
+func (e *Element) Ref(r *Ref) *Element {
+	e.ref = r
+	return e
+}
+
 func (e *Element) addAttr(key, val string) {
 	if e.attrs == nil {
 		e.attrs = make(map[string]string)
@@ -47,13 +58,13 @@ func (e *Element) addAttr(key, val string) {
 	e.attrs[key] = val
 }
 
-func (e *Element) addListener(event string, lf func(Event)) {
+func (e *Element) addListener(event string, lf func(Event), isGlobal bool) {
 	if e.listeners == nil {
-		e.listeners = make(map[string]func(Event))
-		e.activeCallbacks = make(map[string]js.Func)
+		e.listeners = make(map[eventInfo]func(Event))
+		e.activeCallbacks = make(map[eventInfo]js.Func)
 	}
 
-	e.listeners[event] = lf
+	e.listeners[eventInfo{name: event, isGlobal: isGlobal}] = lf
 }
 
 func (e *Element) compClasses() {
@@ -115,7 +126,12 @@ func (e *Element) Checked(c bool) *Element       { return e.BoolAttr("checked", 
 func (e *Element) Style(css string) *Element { return e.Attr("style", css) }
 
 func (e *Element) On(eventName string, handler func(Event)) *Element {
-	e.addListener(eventName, handler)
+	e.addListener(eventName, handler, false)
+	return e
+}
+
+func (e *Element) OnGlobal(eventName string, handler func(Event)) *Element {
+	e.addListener(eventName, handler, true)
 	return e
 }
 
@@ -130,10 +146,10 @@ func (e *Element) OnMouseOver(handler func(Event)) *Element  { return e.On("mous
 func (e *Element) OnMouseOut(handler func(Event)) *Element   { return e.On("mouseout", handler) }
 func (e *Element) OnClick(handler func(Event)) *Element      { return e.On("click", handler) }
 
-func (e *Element) Children(children ...Node) *Element {
+func (e *Element) Children(children ...IntoNode) *Element {
 	for _, n := range children {
 		if n != nil {
-			e.children = append(e.children, n)
+			e.children = append(e.children, n.ToNode())
 		}
 	}
 	return e
@@ -177,6 +193,9 @@ func (e *Element) Text(text string) *Element {
 	e.children = append(e.children, &TextNode{value: text})
 	return e
 }
+func (e *Element) ToNode() Node {
+	return e
+}
 
 // TextNode for general text
 type TextNode struct {
@@ -195,4 +214,8 @@ func (t *TextNode) getKey() string {
 
 func (t *TextNode) isNil() bool {
 	return t == nil
+}
+
+func (t *TextNode) ToNode() Node {
+	return t
 }
