@@ -22,7 +22,7 @@ func If(condition bool, node Node) Node {
 	return nil
 }
 
-func IfElse(condition bool, trueNode, falseNode Node) Node {
+func IfElse(condition bool, trueNode, falseNode IntoNode) IntoNode {
 	if condition {
 		return trueNode
 	}
