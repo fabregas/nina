@@ -90,8 +90,8 @@ func Text(v string) *TextNode {
 	return &TextNode{value: v}
 }
 
-func Raw(htmlString string) *Element {
-	e := Tag("span")
+func Raw(tag, htmlString string) *Element {
+	e := Tag(tag)
 	e.rawHTML = htmlString
 	return e
 }

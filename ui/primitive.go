@@ -46,11 +46,20 @@ func (b *baseBuilder[T]) Attr(key, value string) T {
 }
 
 func (b *baseBuilder[T]) ID(id string) T {
-	return b.Attr("id", id)
+	b.Attr("id", id)
+	return b.self
 }
 
 func (b *baseBuilder[T]) For(id string) T {
-	return b.Attr("for", id)
+	b.Attr("for", id)
+	return b.self
+}
+
+func (b *baseBuilder[T]) Disabled(disabled bool) T {
+	if disabled {
+		b.Attr("disabled", "true")
+	}
+	return b.self
 }
 
 func (b *baseBuilder[T]) ToNode() nn.Node { return b.El() }

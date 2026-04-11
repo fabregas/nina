@@ -146,6 +146,10 @@ func (e *Element) OnMouseOver(handler func(Event)) *Element  { return e.On("mous
 func (e *Element) OnMouseOut(handler func(Event)) *Element   { return e.On("mouseout", handler) }
 func (e *Element) OnClick(handler func(Event)) *Element      { return e.On("click", handler) }
 
+func (e *Element) Empty() bool {
+	return len(e.children) == 0
+}
+
 func (e *Element) Children(children ...IntoNode) *Element {
 	for _, n := range children {
 		if n != nil {
