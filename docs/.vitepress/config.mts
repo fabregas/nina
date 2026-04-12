@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  base: "/docs",
+  base: "/nina/",
   title: "Nina UI",
   description: "WebAssembly UI Framework for Go",
   themeConfig: {
