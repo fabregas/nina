@@ -25,11 +25,13 @@ go mod init my-nina-app
 Go requires a small JavaScript glue file to run WebAssembly. Copy it from your Go installation to your project folder:
 
 ```bash
+# mkdir dist
+
 # for Go 1.24+
-cp $(go env GOROOT)/lib/wasm/wasm_exec.js .
+cp $(go env GOROOT)/lib/wasm/wasm_exec.js ./dist/
 
 # for older versions
-cp $(go env GOROOT)/misc/wasm/wasm_exec.js .
+cp $(go env GOROOT)/misc/wasm/wasm_exec.js ./dist/
 
 ```
 
