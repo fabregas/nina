@@ -77,27 +77,34 @@ Create `main.go`. This is where the magic happens using Nina's declarative API:
 package main
 
 import (
-    "https://github.com/fabregas/nina/ui"
-    "https://github.com/fabregas/nina/nn"
+	"github.com/fabregas/nina/nn"
+	"github.com/fabregas/nina/ui"
 )
 
-func main() {
-    // Create a beautiful button
-    app := nn.Div().
-        Class("flex flex-col items-center justify-center h-screen gap-4").
-        Children(
-            nn.H1().Class("text-4xl font-bold").Text("Welcome to Nina UI"),
-            ui.Button().
-                SizeLg().
-                Text("Click me!")
-        )
+type firstApp struct{}
 
-    // Mount to the #app div
-    nn.Mount("#app", app)
-    
-    // Keep the Wasm app running
-    select {}
+func (a *firstApp) View() *nn.Element {
+	// Create a beautiful button
+	return nn.Div().
+		Class("flex flex-col items-center justify-center h-screen gap-4").
+		Children(
+			nn.H1().Class("text-4xl font-bold").Text("Welcome to Nina UI"),
+			ui.Button().
+				SizeLg().
+				Text("Click me!"),
+		)
+
 }
+
+func main() {
+	// Mount to the #app div
+	app := &firstApp{}
+	nn.Mount("app", app)
+
+	// Keep the Wasm app running
+	select {}
+}
+
 ```
 
 ## 5. Build and Run
@@ -111,7 +118,7 @@ GOOS=js GOARCH=wasm go build -o ./dist/main.wasm main.go
 Now, start your local web server. For example, using Python:
 
 ```bash
-python3 -m http.server 8080
+python3 -m http.server 8080 -d dist
 ```
 
 Open `http://localhost:8080` in your browser. You should see a perfectly styled, interactive UI rendered entirely by Go!

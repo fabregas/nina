@@ -1,6 +1,7 @@
 package nn
 
 import (
+	"fmt"
 	"sync"
 	"syscall/js"
 )
@@ -117,6 +118,9 @@ func Mount(containerID string, root Component) {
 
 	nina.rootComponent = root
 	nina.rootContainer = document.Call("getElementById", containerID)
+	if nina.rootContainer.IsNull() {
+		panic(fmt.Sprintf("unknown element id: %s", containerID))
+	}
 
 	nina.scheduleUpdate(nil)
 }
