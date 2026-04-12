@@ -4,6 +4,7 @@ export default defineConfig({
   base: "/nina/",
   title: "Nina UI",
   description: "WebAssembly UI Framework for Go",
+  ignoreDeadLinks: true,
   themeConfig: {
     nav: [
       { text: 'Home', link: '/' },
