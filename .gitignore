@@ -32,3 +32,5 @@ go.work.sum
 # .vscode/
 
 lucide-svgs
+
+docs/node_modules
