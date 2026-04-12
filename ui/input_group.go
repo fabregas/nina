@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/fabregas/nina/nn"
+	"github.com/fabregas/nina/ui/icons"
 )
 
 func InputGroup() *simpleBuilder {
@@ -153,11 +154,11 @@ func (i *passwordInput) View() *nn.Element {
 
 	if i.S.isShowing {
 		input.TypeText()
-		eyeBtn.Children(IconEye())
+		eyeBtn.Children(icons.Eye())
 
 	} else {
 		input.TypePassword()
-		eyeBtn.Children(IconEyeOff())
+		eyeBtn.Children(icons.EyeOff())
 	}
 
 	return InputGroup().Children(

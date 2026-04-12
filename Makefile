@@ -1,0 +1,6 @@
+
+gen:
+	go generate ./...
+
+test:
+	GOOS=js GOARCH=wasm go test -exec=wasmbrowsertest -v ./...

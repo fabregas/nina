@@ -14,6 +14,7 @@ type baseBuilder[T builder] struct {
 	el            *nn.Element
 	self          T
 	customClasses []string
+	childOverride *nn.Element // optional for AsChild()
 }
 
 func base[T builder](self T, el *nn.Element) baseBuilder[T] {
@@ -62,13 +63,22 @@ func (b *baseBuilder[T]) Disabled(disabled bool) T {
 	return b.self
 }
 
+func (p *baseBuilder[T]) AsChild(child *nn.Element) T {
+	p.childOverride = child
+	return p.self
+}
+
 func (b *baseBuilder[T]) ToNode() nn.Node { return b.El() }
 
 func (b *baseBuilder[T]) El() *nn.Element {
 	finalEl := b.self.build()
 
-	for _, cls := range b.customClasses {
-		finalEl.Class(cls)
+	if b.childOverride != nil {
+		finalEl = b.childOverride.MergeEl(finalEl)
+	}
+
+	if len(b.customClasses) > 0 {
+		finalEl.Class(b.customClasses...)
 	}
 
 	if wrapper, ok := any(b.self).(wrapperBuilder); ok {

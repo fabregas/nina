@@ -5,6 +5,7 @@ import (
 	"syscall/js"
 
 	"github.com/fabregas/nina/nn"
+	"github.com/fabregas/nina/ui/icons"
 )
 
 // ==========================================
@@ -60,7 +61,7 @@ func SelectTrigger() *selectTriggerBuilder {
 
 func (t *selectTriggerBuilder) build() *nn.Element {
 	// icon must be last child
-	return t.el.Children(IconChevronDown())
+	return t.el.Children(icons.ChevronDown())
 }
 
 func (t *selectTriggerBuilder) OnClick(fn func(nn.Event)) *selectTriggerBuilder {
@@ -201,7 +202,7 @@ func (i *selectItemBuilder) wrap(target *nn.Element) *nn.Element {
 
 		indicator := nn.Span().
 			Class("pointer-events-none absolute right-2 flex size-4 items-center justify-center").
-			Children(IconCheck())
+			Children(icons.Check())
 
 		wrapper.Children(indicator)
 	} else {
@@ -239,7 +240,7 @@ func SelectScrollUpButton() *simpleBuilder {
 		nn.Div().
 			Attr("data-slot", "select-scroll-up-button").
 			Attr("aria-hidden", "true").
-			Children(IconChevronUp()).
+			Children(icons.ChevronUp()).
 			Class(baseClass),
 	)
 }
@@ -256,7 +257,7 @@ func SelectScrollDownButton() *simpleBuilder {
 			Attr("data-slot", "select-scroll-down-button").
 			Attr("aria-hidden", "true").
 			Class(baseClass).
-			Children(IconChevronDown()),
+			Children(icons.ChevronDown()),
 	)
 }
 

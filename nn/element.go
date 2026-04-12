@@ -96,6 +96,22 @@ func (e *Element) Class(classes ...string) *Element {
 	return e
 }
 
+func (e *Element) MergeEl(source *Element) *Element {
+	if source.classes != "" {
+		e.Class(source.classes)
+	}
+
+	for k, v := range source.attrs {
+		e.Attr(k, v)
+	}
+
+	for k, v := range source.listeners {
+		e.addListener(k.name, v, k.isGlobal)
+	}
+
+	return e
+}
+
 func (e *Element) ClassFunc(f func() string) *Element {
 	return e.Class(f())
 }

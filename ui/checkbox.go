@@ -1,6 +1,9 @@
 package ui
 
-import "github.com/fabregas/nina/nn"
+import (
+	"github.com/fabregas/nina/nn"
+	"github.com/fabregas/nina/ui/icons"
+)
 
 type checkboxBuilder struct {
 	baseBuilder[*checkboxBuilder]
@@ -56,7 +59,7 @@ func (c *checkboxBuilder) Checked(checked bool) *checkboxBuilder {
 		indicator := nn.Div().
 			Attr("data-slot", "checkbox-indicator").
 			Class("grid place-content-center text-current transition-none [&>svg]:size-3.5").
-			Children(IconCheck())
+			Children(icons.Check())
 
 		c.el.Children(indicator)
 	}
