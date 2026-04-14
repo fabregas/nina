@@ -5,6 +5,11 @@ export default defineConfig({
   title: "Nina UI",
   description: "WebAssembly UI Framework for Go",
   ignoreDeadLinks: true,
+
+  head: [
+    ['script', { src: 'https://cdn.tailwindcss.com' }]
+  ],
+
   themeConfig: {
     nav: [
       { text: 'Home', link: '/' },
@@ -22,8 +27,8 @@ export default defineConfig({
       {
         text: 'UI elements',
         items: [
-          { text: 'Button', link: '/ui_element/button' },
-          { text: 'Alert', link: '/ui_element/alert' },
+          { text: 'Button', link: '/ui/button' },
+          { text: 'Alert', link: '/ui/alert' },
         ]
       }
     ],
