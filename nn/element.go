@@ -12,22 +12,26 @@ type Element struct {
 	tag       string
 	classes   string
 	attrs     map[string]string
-	listeners map[eventInfo]func(Event)
 	children  []Node
 	rawHTML   string
 	key       string
+	listeners *listenersInfo
 
 	// reference to real HTML element in browser
 	// this value will be setup after first render
 	domNode js.Value
 	ref     *Ref
-
-	activeCallbacks map[eventInfo]js.Func
 }
 
 type eventInfo struct {
 	name     string
 	isGlobal bool
+}
+
+type listenersInfo struct {
+	events          map[eventInfo]func(Event)
+	activeCallbacks map[eventInfo]js.Func
+	parentComponent Component // for re-render from element's callbacks
 }
 
 var globalClassPreprocessor func(string) string
@@ -60,11 +64,13 @@ func (e *Element) addAttr(key, val string) {
 
 func (e *Element) addListener(event string, lf func(Event), isGlobal bool) {
 	if e.listeners == nil {
-		e.listeners = make(map[eventInfo]func(Event))
-		e.activeCallbacks = make(map[eventInfo]js.Func)
+		e.listeners = &listenersInfo{
+			events:          make(map[eventInfo]func(Event)),
+			activeCallbacks: make(map[eventInfo]js.Func),
+		}
 	}
 
-	e.listeners[eventInfo{name: event, isGlobal: isGlobal}] = lf
+	e.listeners.events[eventInfo{name: event, isGlobal: isGlobal}] = lf
 }
 
 func (e *Element) compClasses() {
@@ -105,8 +111,10 @@ func (e *Element) MergeEl(source *Element) *Element {
 		e.Attr(k, v)
 	}
 
-	for k, v := range source.listeners {
-		e.addListener(k.name, v, k.isGlobal)
+	if source.listeners != nil {
+		for k, v := range source.listeners.events {
+			e.addListener(k.name, v, k.isGlobal)
+		}
 	}
 
 	return e

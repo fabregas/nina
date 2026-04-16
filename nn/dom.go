@@ -9,6 +9,8 @@ var (
 	// caching global objects for performance reasons
 	global   = js.Global()
 	document = global.Get("document")
+
+	currentRenderingComponent Component
 )
 
 func createElement(tag string) js.Value {
@@ -51,28 +53,11 @@ func createDOM(vnode Node) js.Value {
 		}
 
 		// 2. add event listeners
-		for eventInfo, _ := range n.listeners {
-			// wrapper that calls handler() and schedule DOM update
-			cb := js.FuncOf(func(this js.Value, args []js.Value) any {
-				handler := n.listeners[eventInfo]
-				if handler == nil {
-					return nil
-				}
-				var goEvent Event
-				if len(args) > 0 {
-					goEvent = Event{jsEvent: args[0]}
-				}
-				handler(goEvent)
-
-				nina.scheduleUpdate(nil)
-				return nil
-			})
-			if eventInfo.isGlobal {
-				document.Call("addEventListener", eventInfo.name, cb)
-			} else {
-				el.Call("addEventListener", eventInfo.name, cb)
+		if n.listeners != nil {
+			n.listeners.parentComponent = currentRenderingComponent
+			for eventInfo, _ := range n.listeners.events {
+				addEventListener(el, n.listeners, eventInfo)
 			}
-			n.activeCallbacks[eventInfo] = cb
 		}
 
 		// 3. add children
@@ -89,14 +74,20 @@ func createDOM(vnode Node) js.Value {
 
 	case *ComponentNode:
 		if carrier, ok := n.comp.(stateCarrier); ok {
+			carrier.setUpdater(func() { nina.scheduleUpdate(n.comp) })
 			carrier.importState(nil)
 		}
+
+		prevComponent := currentRenderingComponent
+		currentRenderingComponent = n.comp
 
 		n.lastRender = n.comp.View()
 
 		nina.registerComp(n.comp, n)
 
 		dom := createDOM(n.lastRender)
+
+		currentRenderingComponent = prevComponent
 
 		if m, ok := n.comp.(Mounter); ok {
 			nina.scheduleMount(m.OnMount)
@@ -123,6 +114,39 @@ func createDOM(vnode Node) js.Value {
 	default:
 		panic("unknown node type")
 	}
+}
+
+func addEventListener(el js.Value, listeners *listenersInfo, e eventInfo) {
+	// wrapper that calls handler() and schedule DOM update
+	cb := js.FuncOf(func(this js.Value, args []js.Value) any {
+		handler := listeners.events[e]
+		if handler == nil {
+			return nil
+		}
+		var skipUpdate bool
+		goEvent := Event{skipUpdate: &skipUpdate}
+		if len(args) > 0 {
+			goEvent.jsEvent = args[0]
+		}
+		handler(goEvent)
+
+		if !skipUpdate {
+			nina.scheduleUpdate(listeners.parentComponent)
+		}
+		return nil
+	})
+
+	if e.isGlobal {
+		if e.name == "scroll" {
+			document.Call("addEventListener", e.name, cb, js.ValueOf(true))
+		} else {
+			document.Call("addEventListener", e.name, cb)
+		}
+	} else {
+		el.Call("addEventListener", e.name, cb)
+	}
+
+	listeners.activeCallbacks[e] = cb
 }
 
 func getDOMNode(vnode Node) js.Value {
@@ -253,8 +277,10 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 		if newCarrier, ok := newComp.comp.(stateCarrier); ok {
 			oldCarrier := oldComp.comp.(stateCarrier)
 
+			newCarrier.setUpdater(func() { nina.scheduleUpdate(newComp.comp) })
 			// copy old state into new component
 			newCarrier.importState(oldCarrier.exportState())
+
 		}
 
 		if pureComp, ok := newComp.comp.(Pure); ok {
@@ -269,9 +295,15 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 			}
 		}
 
+		prevComponent := currentRenderingComponent
+		currentRenderingComponent = newComp.comp
+
 		newComp.lastRender = newComp.comp.View()
 
 		patch(parentDOM, old.lastRender, newComp.lastRender)
+
+		currentRenderingComponent = prevComponent
+
 	case *PortalNode:
 		newPortal := newNode.(*PortalNode)
 		newPortal.domNode = old.domNode
@@ -282,45 +314,34 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 }
 
 func patchEvents(domEl js.Value, oldE *Element, newE *Element) {
-	if len(oldE.listeners) == 0 && len(newE.listeners) == 0 {
+	if oldE.listeners == nil && newE.listeners == nil {
 		return
 	}
 
 	if oldE.listeners == nil {
-		oldE.listeners = make(map[eventInfo]func(Event))
-		oldE.activeCallbacks = make(map[eventInfo]js.Func)
+		oldE.listeners = &listenersInfo{
+			events:          make(map[eventInfo]func(Event)),
+			activeCallbacks: make(map[eventInfo]js.Func),
+		}
 	}
 
-	for eventInfo, newHandler := range newE.listeners {
-		if _, exists := oldE.listeners[eventInfo]; !exists {
-			cb := js.FuncOf(func(this js.Value, args []js.Value) any {
-				handler := oldE.listeners[eventInfo]
-				if handler != nil {
-					var goEvent Event
-					if len(args) > 0 {
-						goEvent = Event{jsEvent: args[0]}
-					}
-					handler(goEvent)
-					nina.scheduleUpdate(nil)
-				}
-				return nil
-			})
+	if newE.listeners == nil {
+		newE.listeners = &listenersInfo{}
+	}
 
-			if eventInfo.isGlobal {
-				document.Call("addEventListener", eventInfo.name, cb)
-			} else {
-				domEl.Call("addEventListener", eventInfo.name, cb)
-			}
+	oldE.listeners.parentComponent = currentRenderingComponent
 
-			oldE.activeCallbacks[eventInfo] = cb
+	for eventInfo, newHandler := range newE.listeners.events {
+		if _, exists := oldE.listeners.events[eventInfo]; !exists {
+			addEventListener(domEl, oldE.listeners, eventInfo)
 		}
 
-		oldE.listeners[eventInfo] = newHandler
+		oldE.listeners.events[eventInfo] = newHandler
 	}
 
 	// remove old listeners
-	for eventInfo, cb := range oldE.activeCallbacks {
-		if _, exists := newE.listeners[eventInfo]; !exists {
+	for eventInfo, cb := range oldE.listeners.activeCallbacks {
+		if _, exists := newE.listeners.events[eventInfo]; !exists {
 			if eventInfo.isGlobal {
 				document.Call("removeEventListener", eventInfo.name, cb)
 			} else {
@@ -328,12 +349,11 @@ func patchEvents(domEl js.Value, oldE *Element, newE *Element) {
 			}
 			cb.Release()
 
-			delete(oldE.activeCallbacks, eventInfo)
-			delete(oldE.listeners, eventInfo)
+			delete(oldE.listeners.activeCallbacks, eventInfo)
+			delete(oldE.listeners.events, eventInfo)
 		}
 	}
 
-	newE.activeCallbacks = oldE.activeCallbacks
 	newE.listeners = oldE.listeners
 }
 
@@ -489,13 +509,20 @@ func destroy(node Node) {
 
 	switch n := node.(type) {
 	case *Element:
-		for i, cb := range n.activeCallbacks {
-			if i.isGlobal {
-				document.Call("removeEventListener", i.name, cb)
+		if n.listeners != nil {
+			for i, cb := range n.listeners.activeCallbacks {
+				if i.isGlobal {
+					if i.name == "scroll" {
+						document.Call("removeEventListener", i.name, cb, js.ValueOf(true))
+					} else {
+						document.Call("removeEventListener", i.name, cb)
+					}
+					cb.Release()
+				}
 			}
-			cb.Release()
+
+			n.listeners.activeCallbacks = nil
 		}
-		n.activeCallbacks = nil
 
 		for _, child := range n.children {
 			destroy(child)

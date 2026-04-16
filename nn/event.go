@@ -4,6 +4,12 @@ import "syscall/js"
 
 type Event struct {
 	jsEvent js.Value
+
+	skipUpdate *bool
+}
+
+func (e *Event) PreventUpdate() {
+	*e.skipUpdate = true
 }
 
 // PreventDefault stops default browser behavior (for example link forward)

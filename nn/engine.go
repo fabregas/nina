@@ -54,6 +54,8 @@ func (e *engine) scheduleUpdate(c Component) {
 		e.dirtyComponents[e.rootComponent] = true
 	} else if _, exists := e.registry[c]; exists {
 		e.dirtyComponents[c] = true
+	} else {
+		fmt.Printf("unknown component: %T\n", c)
 	}
 
 	if !e.updateScheduled {
@@ -80,6 +82,7 @@ func (e *engine) performUpdates() {
 
 	// full re-render must be in priority
 	if queue[e.rootComponent] {
+		// fmt.Println("[RENDER] FULL")
 		newTree := C(e.rootComponent)
 		patch(e.rootContainer, e.lastGlobalTree, newTree)
 		e.lastGlobalTree = newTree
@@ -87,6 +90,8 @@ func (e *engine) performUpdates() {
 		// just exit, everything is re-rendered
 	} else {
 		for comp := range queue {
+			// fmt.Printf("[RENDER] %T\n", comp)
+
 			e.mu.Lock()
 			node, exists := e.registry[comp]
 			e.mu.Unlock()
@@ -94,6 +99,8 @@ func (e *engine) performUpdates() {
 			if !exists || node == nil {
 				continue
 			}
+
+			currentRenderingComponent = node.comp
 
 			// local patch
 			newRender := node.comp.View()

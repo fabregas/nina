@@ -3,15 +3,28 @@ package nn
 type stateCarrier interface {
 	exportState() any
 	importState(any)
+	setUpdater(trigger func())
 }
 
 // state structure that customer add to component
 type State[T any] struct {
 	S *T
+
+	updater func()
+}
+
+func (s *State[T]) setUpdater(trigger func()) {
+	s.updater = trigger
+}
+
+func (s *State[T]) Update() {
+	if s.updater != nil {
+		s.updater()
+	}
 }
 
 func (s *State[T]) exportState() any {
-	return s.S
+	return s
 }
 
 func (s *State[T]) importState(oldState any) {
@@ -20,6 +33,8 @@ func (s *State[T]) importState(oldState any) {
 		s.S = new(T)
 	} else {
 		// next renders: just copy pointer from old tree
-		s.S = oldState.(*T)
+		old := oldState.(*State[T])
+		s.S = old.S
+		old.updater = s.updater // remap new updater func to old one (for anync calls)
 	}
 }
