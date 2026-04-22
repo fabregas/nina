@@ -141,7 +141,7 @@ func PasswordInputWrapper(id, label string, val *string) *passwordInput {
 }
 
 func (i *passwordInput) toggle() {
-	i.S.isShowing = !i.S.isShowing
+	i.Data.isShowing = !i.Data.isShowing
 }
 
 func (i *passwordInput) View() *nn.Element {
@@ -152,7 +152,7 @@ func (i *passwordInput) View() *nn.Element {
 
 	input := InputGroupInput().ID(i.id).Bind(i.val)
 
-	if i.S.isShowing {
+	if i.Data.isShowing {
 		input.TypeText()
 		eyeBtn.Children(icons.Eye())
 

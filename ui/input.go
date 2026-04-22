@@ -70,5 +70,9 @@ func (i *inputBuilder) OnEvent(fn func(nn.Event)) *inputBuilder {
 }
 
 func (i *inputBuilder) build() *nn.Element {
+	if i.value != nil {
+		i.el.Value(*i.value)
+	}
+
 	return i.el
 }

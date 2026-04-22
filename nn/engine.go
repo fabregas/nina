@@ -10,20 +10,20 @@ var nina *engine
 
 type engine struct {
 	mu              sync.Mutex
-	registry        map[Component]*ComponentNode
+	registry        map[Component]*componentNode
 	dirtyComponents map[Component]bool
 	mountQueue      []func()
 	updateScheduled bool
 	renderCallback  js.Func
 
 	rootComponent  Component
-	lastGlobalTree *ComponentNode
+	lastGlobalTree *componentNode
 	rootContainer  js.Value
 }
 
 func init() {
 	nina = &engine{
-		registry:        make(map[Component]*ComponentNode),
+		registry:        make(map[Component]*componentNode),
 		dirtyComponents: make(map[Component]bool),
 	}
 
@@ -33,7 +33,7 @@ func init() {
 	})
 }
 
-func (e *engine) registerComp(c Component, node *ComponentNode) {
+func (e *engine) registerComp(c Component, node *componentNode) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.registry[c] = node
@@ -83,14 +83,14 @@ func (e *engine) performUpdates() {
 	// full re-render must be in priority
 	if queue[e.rootComponent] {
 		// fmt.Println("[RENDER] FULL")
-		newTree := C(e.rootComponent)
+		newTree := Comp(e.rootComponent)
 		patch(e.rootContainer, e.lastGlobalTree, newTree)
 		e.lastGlobalTree = newTree
 
 		// just exit, everything is re-rendered
 	} else {
 		for comp := range queue {
-			// fmt.Printf("[RENDER] %T\n", comp)
+			//fmt.Printf("[RENDER] %T\n", comp)
 
 			e.mu.Lock()
 			node, exists := e.registry[comp]
@@ -130,4 +130,43 @@ func Mount(containerID string, root Component) {
 	}
 
 	nina.scheduleUpdate(nil)
+}
+
+func WaitNextFrame() <-chan struct{} {
+	ch := make(chan struct{})
+
+	var cb js.Func
+
+	cb = js.FuncOf(func(this js.Value, args []js.Value) any {
+		defer cb.Release()
+
+		close(ch)
+		return nil
+	})
+
+	js.Global().Call("requestAnimationFrame", cb)
+
+	return ch
+}
+
+func WaitForPaint() <-chan struct{} {
+	ch := make(chan struct{})
+
+	var cb1, cb2 js.Func
+
+	cb2 = js.FuncOf(func(this js.Value, args []js.Value) any {
+		defer cb2.Release()
+		close(ch)
+		return nil
+	})
+
+	cb1 = js.FuncOf(func(this js.Value, args []js.Value) any {
+		defer cb1.Release()
+		js.Global().Call("requestAnimationFrame", cb2)
+		return nil
+	})
+
+	js.Global().Call("requestAnimationFrame", cb1)
+
+	return ch
 }

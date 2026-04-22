@@ -1,6 +1,14 @@
 package ui
 
-import "github.com/fabregas/nina/nn"
+import (
+	"fmt"
+
+	"github.com/fabregas/nina/nn"
+)
+
+type elementer interface {
+	El() *nn.Element
+}
 
 type builder interface {
 	build() *nn.Element
@@ -15,6 +23,7 @@ type baseBuilder[T builder] struct {
 	self          T
 	customClasses []string
 	childOverride *nn.Element // optional for AsChild()
+	built         bool
 }
 
 func base[T builder](self T, el *nn.Element) baseBuilder[T] {
@@ -71,6 +80,11 @@ func (p *baseBuilder[T]) AsChild(child *nn.Element) T {
 func (b *baseBuilder[T]) ToNode() nn.Node { return b.El() }
 
 func (b *baseBuilder[T]) El() *nn.Element {
+	if b.built {
+		fmt.Printf("ALREADY BUILT: %T\n", b.self)
+		return b.el
+	}
+
 	finalEl := b.self.build()
 
 	if b.childOverride != nil {
@@ -84,6 +98,9 @@ func (b *baseBuilder[T]) El() *nn.Element {
 	if wrapper, ok := any(b.self).(wrapperBuilder); ok {
 		return wrapper.wrap(finalEl)
 	}
+
+	b.el = finalEl
+	b.built = true
 
 	return finalEl
 }

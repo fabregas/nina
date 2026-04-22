@@ -1,7 +1,9 @@
 package nn
 
 import (
+	"fmt"
 	"reflect"
+	"runtime/debug"
 	"syscall/js"
 )
 
@@ -72,7 +74,17 @@ func createDOM(vnode Node) js.Value {
 
 		return el
 
-	case *ComponentNode:
+	case *groupNode:
+		frag := document.Call("createDocumentFragment")
+
+		for _, child := range n.children {
+			childDOM := createDOM(child)
+			frag.Call("appendChild", childDOM)
+		}
+
+		return frag
+
+	case *componentNode:
 		if carrier, ok := n.comp.(stateCarrier); ok {
 			carrier.setUpdater(func() { nina.scheduleUpdate(n.comp) })
 			carrier.importState(nil)
@@ -80,6 +92,10 @@ func createDOM(vnode Node) js.Value {
 
 		prevComponent := currentRenderingComponent
 		currentRenderingComponent = n.comp
+
+		if i, ok := n.comp.(Initer); ok {
+			i.OnInit()
+		}
 
 		n.lastRender = n.comp.View()
 
@@ -95,7 +111,7 @@ func createDOM(vnode Node) js.Value {
 
 		return dom
 
-	case *PortalNode:
+	case *portalNode:
 		targetDOM := document.Call("querySelector", n.targetSelector)
 
 		if targetDOM.IsNull() || targetDOM.IsUndefined() {
@@ -118,7 +134,7 @@ func createDOM(vnode Node) js.Value {
 
 func addEventListener(el js.Value, listeners *listenersInfo, e eventInfo) {
 	// wrapper that calls handler() and schedule DOM update
-	cb := js.FuncOf(func(this js.Value, args []js.Value) any {
+	cbFunc := js.FuncOf(func(this js.Value, args []js.Value) any {
 		handler := listeners.events[e]
 		if handler == nil {
 			return nil
@@ -128,6 +144,12 @@ func addEventListener(el js.Value, listeners *listenersInfo, e eventInfo) {
 		if len(args) > 0 {
 			goEvent.jsEvent = args[0]
 		}
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Printf("[Nina] panic in cb at %T [%s]: %+v\n", listeners.parentComponent, e.name, r)
+				fmt.Println(string(debug.Stack()))
+			}
+		}()
 		handler(goEvent)
 
 		if !skipUpdate {
@@ -136,14 +158,24 @@ func addEventListener(el js.Value, listeners *listenersInfo, e eventInfo) {
 		return nil
 	})
 
+	cb := cbInfo{fn: cbFunc}
 	if e.isGlobal {
-		if e.name == "scroll" {
-			document.Call("addEventListener", e.name, cb, js.ValueOf(true))
-		} else {
-			document.Call("addEventListener", e.name, cb)
+		switch e.name {
+		case "scroll":
+			document.Call("addEventListener", e.name, cbFunc, js.ValueOf(true))
+		case "resize-el":
+			// TODO global observer singleton
+			observer := global.Get("ResizeObserver").New(cbFunc)
+
+			observer.Call("observe", el)
+			cb.closeFn = func() {
+				observer.Call("disconnect")
+			}
+		default:
+			document.Call("addEventListener", e.name, cbFunc)
 		}
 	} else {
-		el.Call("addEventListener", e.name, cb)
+		el.Call("addEventListener", e.name, cbFunc)
 	}
 
 	listeners.activeCallbacks[e] = cb
@@ -155,12 +187,21 @@ func getDOMNode(vnode Node) js.Value {
 		return n.domNode
 	case *Element:
 		return n.domNode
-	case *ComponentNode:
+	case *groupNode:
+		for _, ch := range n.children {
+			dom := getDOMNode(ch)
+			if !dom.IsNull() && !dom.IsUndefined() {
+				return dom
+			}
+		}
+
+		return js.Null()
+	case *componentNode:
 		if isNilNode(n) || n.lastRender == nil {
 			return js.Undefined()
 		}
 		return n.lastRender.domNode
-	case *PortalNode:
+	case *portalNode:
 		return n.placeholderNode
 
 	default:
@@ -191,8 +232,10 @@ func isDifferentType(n1, n2 Node) bool {
 		n2Val := n2.(*Element)
 
 		return n1Val.tag != n2Val.tag
-	case *ComponentNode:
-		n2Val := n2.(*ComponentNode)
+	case *groupNode:
+		return false
+	case *componentNode:
+		n2Val := n2.(*componentNode)
 		oldType := reflect.TypeOf(n1Val.comp)
 		newType := reflect.TypeOf(n2Val.comp)
 
@@ -210,24 +253,31 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 
 	// case#1: create new node
 	if isNilNode(oldNode) && !isNilNode(newNode) {
-		//fmt.Println("create new node - ", newNode)
+		// fmt.Println("create new node - ", newNode)
 		parentDOM.Call("appendChild", createDOM(newNode))
 		return
 	}
 
 	// case#2: removing node
 	if !isNilNode(oldNode) && isNilNode(newNode) {
-		//fmt.Println("remove node - ", oldNode)
-		parentDOM.Call("removeChild", getDOMNode(oldNode))
+		// fmt.Println("remove node - ", oldNode)
 		destroy(oldNode)
 		return
 	}
 
 	// case#3: different nodes types or different element tags - full replace
 	if isDifferentType(oldNode, newNode) {
-		//fmt.Println("different nodes types, replace to - ", newNode)
+		// fmt.Printf("different nodes types  [%v] ~ [%v] \n", oldNode, newNode)
+		anchorDOM := getDOMNode(oldNode)
 		newDOM := createDOM(newNode)
-		parentDOM.Call("replaceChild", newDOM, getDOMNode(oldNode))
+
+		if !anchorDOM.IsNull() && !anchorDOM.IsUndefined() {
+			parentDOM.Call("insertBefore", newDOM, anchorDOM)
+		} else {
+			// Fallback
+			parentDOM.Call("appendChild", newDOM)
+		}
+
 		destroy(oldNode)
 		return
 	}
@@ -264,9 +314,13 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 			patchChildren(old.domNode, old.children, newEl.children)
 		}
 
-	case *ComponentNode:
-		newComp := newNode.(*ComponentNode)
-		oldComp := oldNode.(*ComponentNode)
+	case *groupNode:
+		newGroup := newNode.(*groupNode)
+		patchChildren(parentDOM, old.children, newGroup.children)
+
+	case *componentNode:
+		newComp := newNode.(*componentNode)
+		oldComp := oldNode.(*componentNode)
 
 		newComp.parentDOM = parentDOM
 		if oldComp.comp != newComp.comp {
@@ -304,8 +358,8 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 
 		currentRenderingComponent = prevComponent
 
-	case *PortalNode:
-		newPortal := newNode.(*PortalNode)
+	case *portalNode:
+		newPortal := newNode.(*portalNode)
 		newPortal.domNode = old.domNode
 		newPortal.placeholderNode = old.placeholderNode
 
@@ -321,7 +375,7 @@ func patchEvents(domEl js.Value, oldE *Element, newE *Element) {
 	if oldE.listeners == nil {
 		oldE.listeners = &listenersInfo{
 			events:          make(map[eventInfo]func(Event)),
-			activeCallbacks: make(map[eventInfo]js.Func),
+			activeCallbacks: make(map[eventInfo]cbInfo),
 		}
 	}
 
@@ -340,14 +394,9 @@ func patchEvents(domEl js.Value, oldE *Element, newE *Element) {
 	}
 
 	// remove old listeners
-	for eventInfo, cb := range oldE.listeners.activeCallbacks {
+	for eventInfo, _ := range oldE.listeners.activeCallbacks {
 		if _, exists := newE.listeners.events[eventInfo]; !exists {
-			if eventInfo.isGlobal {
-				document.Call("removeEventListener", eventInfo.name, cb)
-			} else {
-				domEl.Call("removeEventListener", eventInfo.name, cb)
-			}
-			cb.Release()
+			destroyEventListeners(oldE, eventInfo)
 
 			delete(oldE.listeners.activeCallbacks, eventInfo)
 			delete(oldE.listeners.events, eventInfo)
@@ -355,6 +404,27 @@ func patchEvents(domEl js.Value, oldE *Element, newE *Element) {
 	}
 
 	newE.listeners = oldE.listeners
+}
+
+func destroyEventListeners(el *Element, ei eventInfo) {
+	cb := el.listeners.activeCallbacks[ei]
+	if ei.isGlobal {
+		switch ei.name {
+		case "scroll":
+			document.Call("removeEventListener", ei.name, cb.fn, js.ValueOf(true))
+		case "resize-el":
+		default:
+			document.Call("removeEventListener", ei.name, cb.fn)
+		}
+	} else {
+		el.domNode.Call("removeEventListener", ei.name, cb.fn)
+	}
+
+	if cb.closeFn != nil {
+		cb.closeFn()
+	}
+
+	cb.fn.Release()
 }
 
 func patchChildren(parentDOM js.Value, oldChilds, newChilds []Node) {
@@ -398,6 +468,17 @@ func patchChildren(parentDOM js.Value, oldChilds, newChilds []Node) {
 			}
 		}
 
+		var anchorDOM js.Value = js.Null()
+		if i > 0 {
+			prevVNode := newChilds[i-1]
+			lastPrevDOM := getLastRealDOM(prevVNode)
+			if !lastPrevDOM.IsNull() && !lastPrevDOM.IsUndefined() {
+				anchorDOM = lastPrevDOM.Get("nextSibling")
+			}
+		} else {
+			anchorDOM = parentDOM.Get("firstChild")
+		}
+
 		if matchedOld != nil {
 			// update attrs and text
 			patch(parentDOM, matchedOld, newChild)
@@ -405,15 +486,8 @@ func patchChildren(parentDOM js.Value, oldChilds, newChilds []Node) {
 			oldIndex, hasOldIndex := oldIndices[key]
 
 			if hasOldIndex {
-				// like React ... if old index less than last placed that we phisycally move it forward
 				if oldIndex < lastPlacedIndex {
-					childNodes := parentDOM.Get("childNodes")
-					if i < childNodes.Get("length").Int() {
-						currentDOM := childNodes.Call("item", i)
-						parentDOM.Call("insertBefore", getDOMNode(matchedOld), currentDOM)
-					} else {
-						parentDOM.Call("appendChild", getDOMNode(matchedOld))
-					}
+					moveNode(newChild, parentDOM, anchorDOM)
 				} else {
 					lastPlacedIndex = oldIndex
 				}
@@ -421,10 +495,9 @@ func patchChildren(parentDOM js.Value, oldChilds, newChilds []Node) {
 		} else {
 			// new node... just create
 			newDOM := createDOM(newChild)
-			childNodes := parentDOM.Get("childNodes")
-			if i < childNodes.Get("length").Int() {
-				currentDOM := childNodes.Call("item", i)
-				parentDOM.Call("insertBefore", newDOM, currentDOM)
+
+			if !anchorDOM.IsNull() && !anchorDOM.IsUndefined() {
+				parentDOM.Call("insertBefore", newDOM, anchorDOM)
 			} else {
 				parentDOM.Call("appendChild", newDOM)
 			}
@@ -433,14 +506,79 @@ func patchChildren(parentDOM js.Value, oldChilds, newChilds []Node) {
 
 	// remove nodes
 	for _, oldChild := range oldKeyed {
-		parentDOM.Call("removeChild", getDOMNode(oldChild))
 		destroy(oldChild)
 	}
 
 	for i := unkeyedIndex; i < len(oldUnkeyed); i++ {
-		parentDOM.Call("removeChild", getDOMNode(oldUnkeyed[i]))
 		destroy(oldUnkeyed[i])
 	}
+}
+
+func getLastRealDOM(vnode Node) js.Value {
+	if vnode == nil {
+		return js.Null()
+	}
+
+	switch n := vnode.(type) {
+	case *TextNode:
+		return n.domNode
+	case *Element:
+		return n.domNode
+	case *groupNode:
+		for i := len(n.children) - 1; i >= 0; i-- {
+			dom := getLastRealDOM(n.children[i])
+			if !dom.IsNull() && !dom.IsUndefined() {
+				return dom
+			}
+		}
+
+		return js.Null()
+	case *componentNode:
+		if isNilNode(n) || n.lastRender == nil {
+			return js.Undefined()
+		}
+		return n.lastRender.domNode
+	case *portalNode:
+		return n.placeholderNode
+	}
+
+	return js.Null()
+}
+
+func moveNode(vnode Node, parentDOM js.Value, anchorDOM js.Value) {
+	if vnode == nil {
+		return
+	}
+
+	var actualDom js.Value
+	switch n := vnode.(type) {
+	case *Element:
+		actualDom = n.domNode
+	case *TextNode:
+		actualDom = n.domNode
+	case *componentNode:
+		if isNilNode(n) || n.lastRender == nil {
+			return
+		}
+		actualDom = n.lastRender.domNode
+	case *portalNode:
+		actualDom = n.placeholderNode
+
+	case *groupNode:
+		for _, child := range n.children {
+			moveNode(child, parentDOM, anchorDOM)
+		}
+		return
+	}
+
+	if !actualDom.IsNull() && !actualDom.IsUndefined() {
+		if !anchorDOM.IsNull() && !anchorDOM.IsUndefined() {
+			parentDOM.Call("insertBefore", actualDom, anchorDOM)
+		} else {
+			parentDOM.Call("appendChild", actualDom)
+		}
+	}
+
 }
 
 func patchClasses(domNode js.Value, oldClasses, newClasses string) {
@@ -510,25 +648,32 @@ func destroy(node Node) {
 	switch n := node.(type) {
 	case *Element:
 		if n.listeners != nil {
-			for i, cb := range n.listeners.activeCallbacks {
-				if i.isGlobal {
-					if i.name == "scroll" {
-						document.Call("removeEventListener", i.name, cb, js.ValueOf(true))
-					} else {
-						document.Call("removeEventListener", i.name, cb)
-					}
-					cb.Release()
-				}
+			for ei, _ := range n.listeners.activeCallbacks {
+				destroyEventListeners(n, ei)
 			}
 
-			n.listeners.activeCallbacks = nil
+			n.listeners.activeCallbacks = make(map[eventInfo]cbInfo)
 		}
 
 		for _, child := range n.children {
 			destroy(child)
 		}
 
-	case *ComponentNode:
+		if !n.domNode.IsNull() && !n.domNode.IsUndefined() {
+			n.domNode.Call("remove")
+		}
+
+	case *TextNode:
+		if !n.domNode.IsNull() && !n.domNode.IsUndefined() {
+			n.domNode.Call("remove")
+		}
+
+	case *groupNode:
+		for _, child := range n.children {
+			destroy(child)
+		}
+
+	case *componentNode:
 		Storage.unwatchAll(n.comp)
 
 		nina.unregisterComp(n.comp)
@@ -540,7 +685,7 @@ func destroy(node Node) {
 		if n.lastRender != nil {
 			destroy(n.lastRender)
 		}
-	case *PortalNode:
+	case *portalNode:
 		if n.child != nil {
 			destroy(n.child)
 		}

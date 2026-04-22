@@ -1,5 +1,9 @@
 package nn
 
+type Initer interface {
+	OnInit()
+}
+
 type Mounter interface {
 	OnMount()
 }

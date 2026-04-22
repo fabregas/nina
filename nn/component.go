@@ -7,8 +7,8 @@ type Component interface {
 	View() *Element
 }
 
-// ComponentNode — is a special це tree node that contain whole component
-type ComponentNode struct {
+// componentNode — is a special це tree node that contain whole component
+type componentNode struct {
 	comp Component
 
 	key        string
@@ -17,26 +17,26 @@ type ComponentNode struct {
 	parentDOM  js.Value
 }
 
-func (c *ComponentNode) isNode() {}
+func (c *componentNode) isNode() {}
 
-func (c *ComponentNode) getKey() string {
+func (c *componentNode) getKey() string {
 	return c.key
 }
-func (c *ComponentNode) isNil() bool {
+func (c *componentNode) isNil() bool {
 	return c == nil
 }
 
-func (c *ComponentNode) Key(key string) *ComponentNode {
+func (c *componentNode) Key(key string) *componentNode {
 	c.key = key
 	return c
 }
 
-func (c *ComponentNode) ToNode() Node {
+func (c *componentNode) ToNode() Node {
 	return c
 }
 
-func C(comp Component) *ComponentNode {
-	return &ComponentNode{
+func Comp(comp Component) *componentNode {
+	return &componentNode{
 		comp: comp,
 	}
 }
@@ -47,4 +47,10 @@ type Pure interface {
 	// Hash should return a string. If the string has not changed since the last time,
 	// the framework WILL NOT call View() and will skip this component.
 	Hash() string
+}
+
+type BaseComponent struct{}
+
+func (c BaseComponent) ToNode() Node {
+	panic("system error: called ToNode at component object")
 }

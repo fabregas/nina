@@ -2,8 +2,8 @@ package nn
 
 import "syscall/js"
 
-// PortalNode — special node that tells engine that Child should be rendered inside TargetSelector
-type PortalNode struct {
+// portalNode — special node that tells engine that Child should be rendered inside TargetSelector
+type portalNode struct {
 	targetSelector string // (for example "body" or "#portal-root")
 	child          Node
 
@@ -11,31 +11,31 @@ type PortalNode struct {
 	placeholderNode js.Value
 }
 
-func (e *PortalNode) isNode() {}
+func (e *portalNode) isNode() {}
 
-func (e *PortalNode) getKey() string {
+func (e *portalNode) getKey() string {
 	return ""
 }
 
-func (e *PortalNode) isNil() bool {
+func (e *portalNode) isNil() bool {
 	return e == nil
 }
 
-func (p *PortalNode) ToNode() Node {
+func (p *portalNode) ToNode() Node {
 	return p
 }
 
-func Portal(child IntoNode) *PortalNode {
+func Portal(child IntoNode) *portalNode {
 	return PortalTo("body", child)
 }
 
-func PortalTo(targetSelector string, child IntoNode) *PortalNode {
+func PortalTo(targetSelector string, child IntoNode) *portalNode {
 	var n Node
 	if child != nil {
 		n = child.ToNode()
 	}
 
-	return &PortalNode{
+	return &portalNode{
 		targetSelector: targetSelector,
 		child:          n,
 	}

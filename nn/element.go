@@ -28,9 +28,14 @@ type eventInfo struct {
 	isGlobal bool
 }
 
+type cbInfo struct {
+	fn      js.Func
+	closeFn func()
+}
+
 type listenersInfo struct {
 	events          map[eventInfo]func(Event)
-	activeCallbacks map[eventInfo]js.Func
+	activeCallbacks map[eventInfo]cbInfo
 	parentComponent Component // for re-render from element's callbacks
 }
 
@@ -66,7 +71,7 @@ func (e *Element) addListener(event string, lf func(Event), isGlobal bool) {
 	if e.listeners == nil {
 		e.listeners = &listenersInfo{
 			events:          make(map[eventInfo]func(Event)),
-			activeCallbacks: make(map[eventInfo]js.Func),
+			activeCallbacks: make(map[eventInfo]cbInfo),
 		}
 	}
 
@@ -129,6 +134,10 @@ func (e *Element) Attr(key, value string) *Element {
 	return e
 }
 
+func (e *Element) GetAttr(key string) string {
+	return e.attrs[key]
+}
+
 func (e *Element) BoolAttr(name string, condition bool) *Element {
 	if condition {
 		return e.Attr(name, "")
@@ -169,18 +178,41 @@ func (e *Element) OnMouseLeave(handler func(Event)) *Element { return e.On("mous
 func (e *Element) OnMouseOver(handler func(Event)) *Element  { return e.On("mouseover", handler) }
 func (e *Element) OnMouseOut(handler func(Event)) *Element   { return e.On("mouseout", handler) }
 func (e *Element) OnClick(handler func(Event)) *Element      { return e.On("click", handler) }
+func (e *Element) OnResize(handler func(Event)) *Element     { return e.OnGlobal("resize-el", handler) }
 
 func (e *Element) Empty() bool {
 	return len(e.children) == 0
 }
 
 func (e *Element) Children(children ...IntoNode) *Element {
+	newC := intoNodesList(children)
+	if len(newC) > 0 {
+		e.children = append(e.children, newC...)
+	}
+
+	return e
+}
+
+func intoNodesList(children []IntoNode) []Node {
+	var ret []Node
+
 	for _, n := range children {
-		if n != nil {
-			e.children = append(e.children, n.ToNode())
+		if n == nil {
+			continue
+		}
+		if comp, isComponent := n.(Component); isComponent {
+			sysNode := &componentNode{comp: comp}
+			ret = append(ret, sysNode)
+		} else {
+			cn := n.ToNode()
+			if isNilNode(cn) {
+				continue
+			}
+			ret = append(ret, cn)
 		}
 	}
-	return e
+
+	return ret
 }
 
 func (e *Element) Bind(target any) *Element {
@@ -209,7 +241,7 @@ func (e *Element) Bind(target any) *Element {
 	default:
 		// FAIL FAST
 		panic(fmt.Sprintf(
-			"[Nina Framework] Critical Error in Bind(): expected a pointer to a basic type (*string, *int, *bool), but got %T",
+			"[Nina] Critical Error in Bind(): expected a pointer to a basic type (*string, *int, *bool), but got %T",
 			target,
 		))
 	}
@@ -223,6 +255,34 @@ func (e *Element) Text(text string) *Element {
 }
 func (e *Element) ToNode() Node {
 	return e
+}
+
+func (e *Element) Walk(cb func(*Element)) {
+	cb(e)
+	for _, vnode := range e.children {
+		e.walkNode(vnode, cb)
+	}
+
+}
+
+func (e *Element) walkNode(vnode Node, cb func(*Element)) {
+	switch n := vnode.(type) {
+	case *Element:
+		if n != nil {
+			n.Walk(cb)
+		}
+	case *componentNode:
+		el := n.comp.View()
+		if el != nil {
+			el.Walk(cb)
+		}
+	case *groupNode:
+		for _, n := range n.children {
+			e.walkNode(n, cb)
+		}
+	case *portalNode:
+		e.walkNode(n.child, cb)
+	}
 }
 
 // TextNode for general text

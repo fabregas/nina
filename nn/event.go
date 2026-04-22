@@ -71,3 +71,18 @@ func (e Event) TargetChecked() bool {
 
 	return target.Get("checked").Bool()
 }
+
+func (e Event) Key() string {
+	var ret js.Value
+
+	if e.jsEvent.IsUndefined() || e.jsEvent.IsNull() {
+		return ""
+	}
+
+	ret = e.jsEvent.Get("key")
+	if ret.IsUndefined() || ret.IsNull() {
+		return ""
+	}
+
+	return ret.String()
+}

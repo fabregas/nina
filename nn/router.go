@@ -109,7 +109,7 @@ func (r *Router) View() *Element {
 		return Div()
 	}
 
-	return Div().Children(C(r.current))
+	return Div().Children(Comp(r.current))
 }
 
 func (r *Router) NotFound(f func(RouteContext) Component) {
