@@ -81,9 +81,11 @@ import (
 	"github.com/fabregas/nina/ui"
 )
 
-type firstApp struct{}
+type firstApp struct{
+    nn.BaseComponent
+}
 
-func (a *firstApp) View() *nn.Element {
+func (a *firstApp) View() nn.Node {
 	// Create a beautiful button
 	return nn.Div().
 		Class("flex flex-col items-center justify-center h-screen gap-4").

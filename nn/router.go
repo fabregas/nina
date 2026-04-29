@@ -60,6 +60,8 @@ func (r *route) Use(middlewares ...Middleware) *route {
 }
 
 type Router struct {
+	BaseComponent
+
 	routes   []*route
 	notFound func(RouteContext) Component
 
@@ -96,7 +98,7 @@ func (r *Router) OnDestroy() {
 	historyMu.Unlock()
 }
 
-func (r *Router) View() *Element {
+func (r *Router) View() Node {
 	if !r.initialized {
 		loc := js.Global().Get("window").Get("location")
 		fullPath := loc.Get("pathname").String() + loc.Get("search").String()
@@ -206,10 +208,12 @@ func notifyRouters(path string) {
 }
 
 type defaultNotFound struct {
+	BaseComponent
+
 	path string
 }
 
-func (d *defaultNotFound) View() *Element {
+func (d *defaultNotFound) View() Node {
 	return Div().
 		Style("font-family: sans-serif; text-align: center; padding: 50px; color: #333;").
 		Children(
@@ -239,10 +243,12 @@ func (d *defaultNotFound) View() *Element {
 }
 
 type redirectComp struct {
+	BaseComponent
+
 	Target string
 }
 
-func (c *redirectComp) View() *Element {
+func (c *redirectComp) View() Node {
 	return Div()
 }
 

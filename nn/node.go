@@ -7,34 +7,34 @@ type Node interface {
 	isNil() bool
 }
 
-type IntoNode interface {
-	ToNode() Node
+type AsNode interface {
+	AsNode() Node
 }
 
 func isNilNode(n Node) bool {
 	return n == nil || n.isNil()
 }
 
-func If(condition bool, node IntoNode) IntoNode {
+func If(condition bool, node AsNode) AsNode {
 	if condition {
 		return node
 	}
 	return nil
 }
 
-func IfElse(condition bool, trueNode, falseNode IntoNode) IntoNode {
+func IfElse(condition bool, trueNode, falseNode AsNode) AsNode {
 	if condition {
 		return trueNode
 	}
 	return falseNode
 }
 
-func List[T any](lst []T, conv func(T, int) IntoNode, emptyNode IntoNode) IntoNode {
+func List[T any](lst []T, conv func(T, int) AsNode, emptyNode AsNode) AsNode {
 	if len(lst) == 0 {
 		return emptyNode
 	}
 
-	nodes := make([]IntoNode, 0, len(lst))
+	nodes := make([]AsNode, 0, len(lst))
 
 	for i, v := range lst {
 		nodes = append(nodes, conv(v, i))

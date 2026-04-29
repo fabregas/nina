@@ -184,7 +184,7 @@ func (e *Element) Empty() bool {
 	return len(e.children) == 0
 }
 
-func (e *Element) Children(children ...IntoNode) *Element {
+func (e *Element) Children(children ...AsNode) *Element {
 	newC := intoNodesList(children)
 	if len(newC) > 0 {
 		e.children = append(e.children, newC...)
@@ -193,7 +193,7 @@ func (e *Element) Children(children ...IntoNode) *Element {
 	return e
 }
 
-func intoNodesList(children []IntoNode) []Node {
+func intoNodesList(children []AsNode) []Node {
 	var ret []Node
 
 	for _, n := range children {
@@ -204,7 +204,7 @@ func intoNodesList(children []IntoNode) []Node {
 			sysNode := &componentNode{comp: comp}
 			ret = append(ret, sysNode)
 		} else {
-			cn := n.ToNode()
+			cn := n.AsNode()
 			if isNilNode(cn) {
 				continue
 			}
@@ -253,36 +253,8 @@ func (e *Element) Text(text string) *Element {
 	e.children = append(e.children, &TextNode{value: text})
 	return e
 }
-func (e *Element) ToNode() Node {
+func (e *Element) AsNode() Node {
 	return e
-}
-
-func (e *Element) Walk(cb func(*Element)) {
-	cb(e)
-	for _, vnode := range e.children {
-		e.walkNode(vnode, cb)
-	}
-
-}
-
-func (e *Element) walkNode(vnode Node, cb func(*Element)) {
-	switch n := vnode.(type) {
-	case *Element:
-		if n != nil {
-			n.Walk(cb)
-		}
-	case *componentNode:
-		el := n.comp.View()
-		if el != nil {
-			el.Walk(cb)
-		}
-	case *groupNode:
-		for _, n := range n.children {
-			e.walkNode(n, cb)
-		}
-	case *portalNode:
-		e.walkNode(n.child, cb)
-	}
 }
 
 // TextNode for general text
@@ -304,6 +276,6 @@ func (t *TextNode) isNil() bool {
 	return t == nil
 }
 
-func (t *TextNode) ToNode() Node {
+func (t *TextNode) AsNode() Node {
 	return t
 }

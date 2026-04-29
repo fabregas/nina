@@ -14,11 +14,11 @@ func (g *groupNode) isNil() bool {
 	return g == nil
 }
 
-func (g *groupNode) ToNode() Node {
+func (g *groupNode) AsNode() Node {
 	return g
 }
 
-func Group(nodes ...IntoNode) IntoNode {
+func Group(nodes ...AsNode) AsNode {
 	return &groupNode{
 		children: intoNodesList(nodes),
 	}

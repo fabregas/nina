@@ -92,6 +92,7 @@ func createDOM(vnode Node) js.Value {
 
 		prevComponent := currentRenderingComponent
 		currentRenderingComponent = n.comp
+		n.comp.setParent(prevComponent)
 
 		if i, ok := n.comp.(Initer); ok {
 			i.OnInit()
@@ -200,7 +201,7 @@ func getDOMNode(vnode Node) js.Value {
 		if isNilNode(n) || n.lastRender == nil {
 			return js.Undefined()
 		}
-		return n.lastRender.domNode
+		return getDOMNode(n.lastRender)
 	case *portalNode:
 		return n.placeholderNode
 
@@ -337,6 +338,8 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 
 		}
 
+		newComp.comp.importContext(oldComp.comp.exportContext())
+
 		if pureComp, ok := newComp.comp.(Pure); ok {
 			newHash := pureComp.Hash()
 			newComp.hash = newHash
@@ -351,6 +354,7 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 
 		prevComponent := currentRenderingComponent
 		currentRenderingComponent = newComp.comp
+		newComp.comp.setParent(prevComponent)
 
 		newComp.lastRender = newComp.comp.View()
 
@@ -537,7 +541,7 @@ func getLastRealDOM(vnode Node) js.Value {
 		if isNilNode(n) || n.lastRender == nil {
 			return js.Undefined()
 		}
-		return n.lastRender.domNode
+		return getLastRealDOM(n.lastRender)
 	case *portalNode:
 		return n.placeholderNode
 	}
@@ -560,7 +564,7 @@ func moveNode(vnode Node, parentDOM js.Value, anchorDOM js.Value) {
 		if isNilNode(n) || n.lastRender == nil {
 			return
 		}
-		actualDom = n.lastRender.domNode
+		moveNode(n.lastRender, parentDOM, anchorDOM)
 	case *portalNode:
 		actualDom = n.placeholderNode
 
@@ -674,8 +678,6 @@ func destroy(node Node) {
 		}
 
 	case *componentNode:
-		Storage.unwatchAll(n.comp)
-
 		nina.unregisterComp(n.comp)
 
 		if d, ok := n.comp.(Destroyer); ok {

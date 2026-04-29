@@ -40,10 +40,14 @@ func (e *engine) registerComp(c Component, node *componentNode) {
 }
 
 func (e *engine) unregisterComp(c Component) {
+	Storage.unwatchAll(c)
+
 	e.mu.Lock()
-	defer e.mu.Unlock()
 	delete(e.registry, c)
 	delete(e.dirtyComponents, c)
+	e.mu.Unlock()
+
+	c.destroy()
 }
 
 func (e *engine) scheduleUpdate(c Component) {

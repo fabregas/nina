@@ -30,7 +30,9 @@ func (s *State[T]) exportState() any {
 func (s *State[T]) importState(oldState any) {
 	if oldState == nil {
 		// first render: allocate memory for new state
-		s.Data = new(T)
+		if s.Data == nil {
+			s.Data = new(T)
+		}
 	} else {
 		// next renders: just copy pointer from old tree
 		old := oldState.(*State[T])

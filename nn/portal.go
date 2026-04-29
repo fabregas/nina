@@ -21,18 +21,18 @@ func (e *portalNode) isNil() bool {
 	return e == nil
 }
 
-func (p *portalNode) ToNode() Node {
+func (p *portalNode) AsNode() Node {
 	return p
 }
 
-func Portal(child IntoNode) *portalNode {
+func Portal(child AsNode) *portalNode {
 	return PortalTo("body", child)
 }
 
-func PortalTo(targetSelector string, child IntoNode) *portalNode {
+func PortalTo(targetSelector string, child AsNode) *portalNode {
 	var n Node
 	if child != nil {
-		n = child.ToNode()
+		n = child.AsNode()
 	}
 
 	return &portalNode{

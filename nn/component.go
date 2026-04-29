@@ -1,10 +1,23 @@
 package nn
 
-import "syscall/js"
+import (
+	"reflect"
+	"syscall/js"
+)
 
-// any struct that has View method is Component
 type Component interface {
-	View() *Element
+	View() Node
+
+	AddCleanup(func())
+	destroy()
+
+	parent() Component
+	setParent(Component)
+
+	setContext(typ reflect.Type, val any)
+	getContext(typ reflect.Type) (any, bool)
+	exportContext() any
+	importContext(any)
 }
 
 // componentNode — is a special це tree node that contain whole component
@@ -13,7 +26,7 @@ type componentNode struct {
 
 	key        string
 	hash       string
-	lastRender *Element
+	lastRender Node
 	parentDOM  js.Value
 }
 
@@ -31,7 +44,7 @@ func (c *componentNode) Key(key string) *componentNode {
 	return c
 }
 
-func (c *componentNode) ToNode() Node {
+func (c *componentNode) AsNode() Node {
 	return c
 }
 
@@ -49,8 +62,80 @@ type Pure interface {
 	Hash() string
 }
 
-type BaseComponent struct{}
+type BaseComponent struct {
+	cleanups   []func()
+	contextMap map[reflect.Type]any
+	parentC    Component
+}
 
-func (c BaseComponent) ToNode() Node {
+func (c BaseComponent) AsNode() Node {
 	panic("system error: called ToNode at component object")
+}
+
+func (c *BaseComponent) AddCleanup(fn func()) {
+	c.cleanups = append(c.cleanups, fn)
+}
+
+func (c *BaseComponent) destroy() {
+	for _, cleanup := range c.cleanups {
+		cleanup()
+	}
+	c.cleanups = nil
+}
+
+func (c *BaseComponent) setParent(p Component) {
+	c.parentC = p
+}
+
+func (c *BaseComponent) parent() Component {
+	return c.parentC
+}
+
+func (b *BaseComponent) setContext(typ reflect.Type, val any) {
+	if b.contextMap == nil {
+		b.contextMap = make(map[reflect.Type]any)
+	}
+	b.contextMap[typ] = val
+}
+
+func (b *BaseComponent) getContext(typ reflect.Type) (any, bool) {
+	if b.contextMap == nil {
+		return nil, false
+	}
+	val, ok := b.contextMap[typ]
+	return val, ok
+}
+
+func (b *BaseComponent) importContext(c any) {
+	newCtx := c.(map[reflect.Type]any)
+	b.contextMap = newCtx
+}
+
+func (b *BaseComponent) exportContext() any {
+	return b.contextMap
+}
+
+func ProvideContext[T any](c Component, value T) {
+	var dummy *T
+
+	typ := reflect.TypeOf(dummy).Elem()
+
+	c.setContext(typ, value)
+}
+
+func GetContext[T any](startNode Component) T {
+	var dummy *T
+	typ := reflect.TypeOf(dummy).Elem()
+
+	curr := startNode
+
+	for curr != nil {
+		if val, ok := curr.getContext(typ); ok {
+			return val.(T)
+		}
+		curr = curr.parent()
+	}
+
+	var zero T
+	return zero
 }
