@@ -125,6 +125,7 @@ type pwdInputState struct {
 }
 
 type passwordInput struct {
+	nn.BaseComponent
 	nn.State[pwdInputState]
 
 	id    string
@@ -144,7 +145,7 @@ func (i *passwordInput) toggle() {
 	i.Data.isShowing = !i.Data.isShowing
 }
 
-func (i *passwordInput) View() *nn.Element {
+func (i *passwordInput) View() nn.Node {
 	eyeBtn := Button().
 		Ghost().
 		SizeIconSm().

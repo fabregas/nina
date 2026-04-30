@@ -94,7 +94,7 @@ func (e *engine) performUpdates() {
 		// just exit, everything is re-rendered
 	} else {
 		for comp := range queue {
-			//fmt.Printf("[RENDER] %T\n", comp)
+			//fmt.Printf("[RENDER] %T - %p\n", comp, comp)
 
 			e.mu.Lock()
 			node, exists := e.registry[comp]

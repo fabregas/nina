@@ -280,7 +280,7 @@ type SelectState struct {
 	width float64
 }
 
-func SelectController(id string, state *SelectState, options []SelectOption, placeholder string) nn.IntoNode {
+func SelectController(id string, state *SelectState, options []SelectOption, placeholder string) nn.AsNode {
 	if state == nil {
 		state = &SelectState{}
 	}
@@ -347,9 +347,9 @@ func SelectController(id string, state *SelectState, options []SelectOption, pla
 			SelectValue().Children(nn.Text(displayValue)),
 		).El().OnGlobal("click", globalClick)
 
-	var content nn.IntoNode
+	var content nn.AsNode
 	if state.IsOpen {
-		var items []nn.IntoNode
+		var items []nn.AsNode
 		for _, opt := range options {
 			item := SelectItem(opt.Value).
 				Selected(state.Value == opt.Value).

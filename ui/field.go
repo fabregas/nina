@@ -145,7 +145,7 @@ func (e *fieldErrorBuilder) build() *nn.Element {
 		return e.el.Text(uniqueErrors[0])
 	}
 
-	var listItems []nn.IntoNode
+	var listItems []nn.AsNode
 	for _, err := range uniqueErrors {
 		listItems = append(listItems, nn.Li().Text(err))
 	}

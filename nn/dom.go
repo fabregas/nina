@@ -31,7 +31,11 @@ func createTextNode(text string) js.Value {
 }
 
 // createDOM generates real DOM from virtual Node
-func createDOM(vnode Node) js.Value {
+func createDOM(parentDOM js.Value, vnode Node) js.Value {
+	if isNilNode(vnode) {
+		return js.Null()
+	}
+
 	switch n := vnode.(type) {
 
 	case *TextNode:
@@ -67,8 +71,8 @@ func createDOM(vnode Node) js.Value {
 			el.Set("innerHTML", n.rawHTML)
 		} else {
 			for _, child := range n.children {
-				childDOM := createDOM(child)
-				el.Call("appendChild", childDOM)
+				childDOM := createDOM(el, child)
+				appendDOMChild(el, childDOM)
 			}
 		}
 
@@ -78,8 +82,8 @@ func createDOM(vnode Node) js.Value {
 		frag := document.Call("createDocumentFragment")
 
 		for _, child := range n.children {
-			childDOM := createDOM(child)
-			frag.Call("appendChild", childDOM)
+			childDOM := createDOM(frag, child)
+			appendDOMChild(frag, childDOM)
 		}
 
 		return frag
@@ -93,6 +97,7 @@ func createDOM(vnode Node) js.Value {
 		prevComponent := currentRenderingComponent
 		currentRenderingComponent = n.comp
 		n.comp.setParent(prevComponent)
+		n.parentDOM = parentDOM
 
 		if i, ok := n.comp.(Initer); ok {
 			i.OnInit()
@@ -102,7 +107,7 @@ func createDOM(vnode Node) js.Value {
 
 		nina.registerComp(n.comp, n)
 
-		dom := createDOM(n.lastRender)
+		dom := createDOM(parentDOM, n.lastRender)
 
 		currentRenderingComponent = prevComponent
 
@@ -121,8 +126,8 @@ func createDOM(vnode Node) js.Value {
 
 		var childDOM js.Value
 		if n.child != nil {
-			childDOM = createDOM(n.child)
-			targetDOM.Call("appendChild", childDOM)
+			childDOM = createDOM(targetDOM, n.child)
+			appendDOMChild(targetDOM, childDOM)
 		}
 		n.domNode = childDOM
 		n.placeholderNode = document.Call("createComment", "portal-placeholder")
@@ -246,6 +251,22 @@ func isDifferentType(n1, n2 Node) bool {
 	return false
 }
 
+func appendDOMChild(parentDOM, newDOM js.Value) {
+	if newDOM.IsNull() || newDOM.IsUndefined() {
+		return
+	}
+
+	parentDOM.Call("appendChild", newDOM)
+}
+
+func insertDOMBefore(parentDOM, newDOM, anchorDOM js.Value) {
+	if newDOM.IsNull() || newDOM.IsUndefined() {
+		return
+	}
+
+	parentDOM.Call("insertBefore", newDOM, anchorDOM)
+}
+
 // patch compare old and new node and makes changes into parentDOM
 func patch(parentDOM js.Value, oldNode, newNode Node) {
 	if isNilNode(oldNode) && isNilNode(newNode) {
@@ -255,7 +276,7 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 	// case#1: create new node
 	if isNilNode(oldNode) && !isNilNode(newNode) {
 		// fmt.Println("create new node - ", newNode)
-		parentDOM.Call("appendChild", createDOM(newNode))
+		appendDOMChild(parentDOM, createDOM(parentDOM, newNode))
 		return
 	}
 
@@ -268,15 +289,15 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 
 	// case#3: different nodes types or different element tags - full replace
 	if isDifferentType(oldNode, newNode) {
-		// fmt.Printf("different nodes types  [%v] ~ [%v] \n", oldNode, newNode)
+		//fmt.Printf("different nodes types at %v  [%v] ~ [%v] \n", parentDOM, oldNode, newNode)
 		anchorDOM := getDOMNode(oldNode)
-		newDOM := createDOM(newNode)
+		newDOM := createDOM(parentDOM, newNode)
 
 		if !anchorDOM.IsNull() && !anchorDOM.IsUndefined() {
-			parentDOM.Call("insertBefore", newDOM, anchorDOM)
+			insertDOMBefore(parentDOM, newDOM, anchorDOM)
 		} else {
 			// Fallback
-			parentDOM.Call("appendChild", newDOM)
+			appendDOMChild(parentDOM, newDOM)
 		}
 
 		destroy(oldNode)
@@ -331,7 +352,6 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 
 		if newCarrier, ok := newComp.comp.(stateCarrier); ok {
 			oldCarrier := oldComp.comp.(stateCarrier)
-
 			newCarrier.setUpdater(func() { nina.scheduleUpdate(newComp.comp) })
 			// copy old state into new component
 			newCarrier.importState(oldCarrier.exportState())
@@ -356,9 +376,10 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 		currentRenderingComponent = newComp.comp
 		newComp.comp.setParent(prevComponent)
 
+		prevRender := old.lastRender // important for old == newComp case
 		newComp.lastRender = newComp.comp.View()
 
-		patch(parentDOM, old.lastRender, newComp.lastRender)
+		patch(parentDOM, prevRender, newComp.lastRender)
 
 		currentRenderingComponent = prevComponent
 
@@ -498,12 +519,12 @@ func patchChildren(parentDOM js.Value, oldChilds, newChilds []Node) {
 			}
 		} else {
 			// new node... just create
-			newDOM := createDOM(newChild)
+			newDOM := createDOM(parentDOM, newChild)
 
 			if !anchorDOM.IsNull() && !anchorDOM.IsUndefined() {
-				parentDOM.Call("insertBefore", newDOM, anchorDOM)
+				insertDOMBefore(parentDOM, newDOM, anchorDOM)
 			} else {
-				parentDOM.Call("appendChild", newDOM)
+				appendDOMChild(parentDOM, newDOM)
 			}
 		}
 	}
@@ -577,9 +598,9 @@ func moveNode(vnode Node, parentDOM js.Value, anchorDOM js.Value) {
 
 	if !actualDom.IsNull() && !actualDom.IsUndefined() {
 		if !anchorDOM.IsNull() && !anchorDOM.IsUndefined() {
-			parentDOM.Call("insertBefore", actualDom, anchorDOM)
+			insertDOMBefore(parentDOM, actualDom, anchorDOM)
 		} else {
-			parentDOM.Call("appendChild", actualDom)
+			appendDOMChild(parentDOM, actualDom)
 		}
 	}
 
@@ -694,6 +715,9 @@ func destroy(node Node) {
 
 		if !n.domNode.IsNull() && !n.domNode.IsUndefined() {
 			n.domNode.Call("remove")
+		}
+		if !n.placeholderNode.IsNull() && !n.placeholderNode.IsUndefined() {
+			n.placeholderNode.Call("remove")
 		}
 	}
 }
