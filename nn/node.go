@@ -2,6 +2,8 @@ package nn
 
 // general interface for VirtualDOM
 type Node interface {
+	AsNode
+
 	isNode()
 	getKey() string
 	isNil() bool

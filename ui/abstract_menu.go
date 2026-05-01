@@ -4,7 +4,12 @@ import (
 	"github.com/fabregas/nina/nn"
 )
 
-func WrapMenu(menuContent *nn.Element, onClickCb func(value string)) *nn.Element {
+func WrapMenu(menuNode nn.AsNode, onClickCb func(value string)) *nn.Element {
+	menuContent, ok := menuNode.AsNode().(*nn.Element)
+	if !ok {
+		panic("wrapMenu can wrap only Element")
+	}
+
 	onContentHover := func(e nn.Event) {
 		e.PreventUpdate()
 

@@ -6,66 +6,14 @@ import (
 	"github.com/fabregas/nina/nn"
 )
 
-// ==========================================
-// PROP STORE
-// ==========================================
-
-type PropStore struct {
-	text    string
-	classes string
-	attrs   map[string]string
-	events  map[string]func(nn.Event)
-}
-
-func (p *PropStore) Merge(other *PropStore) {
-	if other.classes != "" {
-		p.classes = p.classes + " " + other.classes
-	}
-
-	for k, v := range other.attrs {
-		if p.attrs == nil {
-			p.attrs = make(map[string]string)
-		}
-		p.attrs[k] = v
-	}
-
-	for evt, handler := range other.events {
-		if p.events == nil {
-			p.events = make(map[string]func(nn.Event))
-		}
-		p.events[evt] = handler
-	}
-
-	if other.text != "" {
-		p.text = other.text
-	}
-}
-
-func (p *PropStore) ApplyTo(el *nn.Element) *nn.Element {
-	if p.classes != "" {
-		el.Class(p.classes)
-	}
-	for k, v := range p.attrs {
-		el.Attr(k, v)
-	}
-	for evt, handler := range p.events {
-		el.On(evt, handler)
-	}
-
-	if p.text != "" {
-		el.Text(p.text)
-	}
-
-	return el
-}
-
 type UIProps[T any] struct {
 	instance T
 
-	props         PropStore
+	props         nn.Props
 	children      []nn.AsNode
-	childOverride *nn.Element // optional for AsChild()
-	isInit        bool
+	childOverride nn.AsNode // optional for AsChild()
+
+	isInit bool
 }
 
 func (p *UIProps[T]) init(instance T) {
@@ -73,45 +21,61 @@ func (p *UIProps[T]) init(instance T) {
 	p.isInit = true
 }
 
+func (p *UIProps[T]) MergeProps(other *nn.Props) {
+	p.props.Merge(other)
+}
+
 func (p *UIProps[T]) Class(c string) T {
 	p.assertInit()
-	if p.props.classes != "" {
-		p.props.classes += " "
-	}
-	p.props.classes += c
+	p.props.Class(c)
+
+	return p.instance
+}
+
+func (p *UIProps[T]) Style(style string) T {
+	p.assertInit()
+	p.props.Style(style)
 
 	return p.instance
 }
 
 func (p *UIProps[T]) Attr(k, v string) T {
 	p.assertInit()
-	if p.props.attrs == nil {
-		p.props.attrs = make(map[string]string)
-	}
-	p.props.attrs[k] = v
+	p.props.Attr(k, v)
+
+	return p.instance
+}
+
+func (p *UIProps[T]) Key(key string) T {
+	p.assertInit()
+	p.props.Key(key)
+
+	return p.instance
+}
+
+func (p *UIProps[T]) Ref(ref *nn.Ref) T {
+	p.assertInit()
+	p.props.Ref(ref)
 
 	return p.instance
 }
 
 func (p *UIProps[T]) On(event string, handler func(nn.Event)) T {
 	p.assertInit()
-	if p.props.events == nil {
-		p.props.events = make(map[string]func(nn.Event))
-	}
-	p.props.events[event] = handler
+	p.props.On(event, handler)
+
+	return p.instance
+}
+
+func (p *UIProps[T]) OnGlobal(event string, handler func(nn.Event)) T {
+	p.assertInit()
+	p.props.OnGlobal(event, handler)
 
 	return p.instance
 }
 
 func (p *UIProps[T]) OnClick(handler func(nn.Event)) T {
 	return p.On("click", handler)
-}
-
-func (p *UIProps[T]) Text(t string) T {
-	p.assertInit()
-	p.props.text = t
-
-	return p.instance
 }
 
 func (p *UIProps[T]) assertInit() {
@@ -147,7 +111,12 @@ func (p *UIProps[T]) Disabled(disabled bool) T {
 	return p.instance
 }
 
-func (p *UIProps[T]) AsChild(child *nn.Element) T {
+func (p *UIProps[T]) Text(t string) T {
+	return p.Children(nn.Text(t))
+}
+
+func (p *UIProps[T]) AsChild(child nn.AsNode) T {
+	p.assertInit()
 	p.childOverride = child
 
 	return p.instance
@@ -157,44 +126,60 @@ func (p *UIProps[T]) AsChild(child *nn.Element) T {
 // baseBuilder
 // ==========================================
 
+type buildContext struct {
+	Props    *nn.Props
+	Children []nn.AsNode
+}
+
 type builder interface {
-	build() *nn.Element
+	build(*buildContext)
 }
 
 type baseBuilder[T builder] struct {
 	UIProps[T]
 
-	el    *nn.Element
-	built bool
+	tag string
 }
 
 func (b *baseBuilder[T]) AsNode() nn.Node {
-	return b.El()
-}
-
-func (b *baseBuilder[T]) El() *nn.Element {
-	if b.built {
-		//fmt.Printf("ALREADY BUILT: %T\n", b.instance)
-		return b.el
+	ctx := &buildContext{
+		Props:    b.props.Clone(),
+		Children: append([]nn.AsNode(nil), b.children...),
 	}
 
-	b.el.Children(b.children...)
-	b.el = b.props.ApplyTo(b.el)
+	b.instance.build(ctx)
 
-	b.el = b.instance.build()
+	var coreNode nn.Node
 
 	if b.childOverride != nil {
-		b.el = b.childOverride.MergeEl(b.el)
+		if receiver, ok := b.childOverride.(interface{ MergeProps(*nn.Props) }); ok {
+			receiver.MergeProps(ctx.Props)
+			coreNode = b.childOverride.AsNode()
+		} else {
+			node := b.childOverride.AsNode()
+			if el, ok := node.(*nn.Element); ok {
+				ctx.Props.ApplyTo(el)
+				coreNode = el
+			}
+		}
+	} else {
+		freshEl := nn.Tag(b.tag)
+		ctx.Props.ApplyTo(freshEl)
+		freshEl.Children(ctx.Children...)
+
+		coreNode = freshEl
 	}
 
-	b.built = true
+	if nw, ok := any(b.instance).(interface{ wrap(nn.Node) nn.Node }); ok {
+		return nw.wrap(coreNode)
+	}
 
-	return b.el
+	return coreNode
 }
 
-func base[T builder](self T, el *nn.Element) baseBuilder[T] {
+func base[T builder](self T, tag string) baseBuilder[T] {
 	b := baseBuilder[T]{
-		el: el,
+		tag: tag,
 	}
 
 	b.init(self)
@@ -211,28 +196,59 @@ type uiComponent[T any] struct {
 	UIProps[T]
 }
 
-func (c *uiComponent[T]) ApplyProps(p *nn.Element) *nn.Element {
-	p.Children(c.children...)
-	c.props.ApplyTo(p)
-	if c.childOverride != nil {
-		p = c.childOverride.MergeEl(p)
+func (c *uiComponent[T]) AsNode() nn.Node {
+	if comp, ok := any(c.instance).(nn.Component); ok {
+		return nn.Comp(comp)
 	}
 
-	return p
+	panic(fmt.Sprintf("Method View() must be implemented for %T!", c.instance))
+}
+
+func (c *uiComponent[T]) ApplyProps(defaultRoot nn.Node) nn.Node {
+	customerProps := c.props.Clone()
+
+	if c.childOverride != nil {
+		var internalProps nn.Props
+		if el, ok := defaultRoot.(*nn.Element); ok {
+			internalProps.MergeFromElement(el)
+		}
+
+		internalProps.Merge(customerProps)
+		if receiver, ok := c.childOverride.(interface{ MergeProps(*nn.Props) }); ok {
+			receiver.MergeProps(&internalProps)
+		}
+
+		return c.childOverride.AsNode()
+	}
+
+	if el, ok := defaultRoot.(*nn.Element); ok {
+		customerProps.ApplyTo(el)
+		return el
+	}
+
+	return defaultRoot
+}
+
+func (c *uiComponent[T]) ApplyPropsWithChildren(defaultRoot nn.Node) nn.Node {
+	dest := c.ApplyProps(defaultRoot)
+
+	if el, ok := defaultRoot.(*nn.Element); ok {
+		el.Children(c.children...)
+	}
+
+	return dest
 }
 
 type simpleBuilder struct {
 	baseBuilder[*simpleBuilder]
 }
 
-func (s *simpleBuilder) build() *nn.Element {
-	return s.el
-}
+func (s *simpleBuilder) build(*buildContext) {}
 
-func simple(el *nn.Element) *simpleBuilder {
+func simple(tag string) *simpleBuilder {
 	b := &simpleBuilder{}
 	b.baseBuilder = baseBuilder[*simpleBuilder]{
-		el: el,
+		tag: tag,
 	}
 	b.init(b)
 

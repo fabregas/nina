@@ -1,41 +1,20 @@
 package ui
 
-import (
-	"github.com/fabregas/nina/nn"
-)
-
 type buttonBuilder struct {
 	baseBuilder[*buttonBuilder]
 
 	variantClass      string
 	sizeAttr          string
 	customSizeClasses map[string]string
-
-	onClick      func()
-	onEventClick func(nn.Event)
 }
 
 func Button() *buttonBuilder {
-	b := &buttonBuilder{}
-
 	baseClass := "group/button inline-flex shrink-0 items-center justify-center rounded-4xl border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
 
-	btn := nn.Button().
-		Attr("data-slot", "button").
+	b := &buttonBuilder{}
+	b.baseBuilder = base(b, "button")
+	b.Attr("data-slot", "button").
 		Class(baseClass)
-
-	btn.OnClick(func(e nn.Event) {
-		e.PreventDefault()
-
-		if b.onEventClick != nil {
-			b.onEventClick(e)
-		} else if b.onClick != nil {
-			b.onClick()
-		}
-	})
-
-	b.baseBuilder = base(b, btn)
-
 	return b.Primary().SizeMd()
 }
 
@@ -116,17 +95,7 @@ func (b *buttonBuilder) SizeIconLg() *buttonBuilder {
 	return b
 }
 
-func (b *buttonBuilder) OnClick(fn func()) *buttonBuilder {
-	b.onClick = fn
-	return b
-}
-
-func (b *buttonBuilder) OnEvent(fn func(nn.Event)) *buttonBuilder {
-	b.onEventClick = fn
-	return b
-}
-
-func (b *buttonBuilder) build() *nn.Element {
+func (b *buttonBuilder) build(ctx *buildContext) {
 	var sizeClass string
 	if custom, ok := b.customSizeClasses[b.sizeAttr]; ok {
 		sizeClass = custom
@@ -150,7 +119,7 @@ func (b *buttonBuilder) build() *nn.Element {
 			sizeClass = "h-9 gap-1.5 px-3 has-data-[icon=inline-end]:pr-2.5 has-data-[icon=inline-start]:pl-2.5"
 		}
 	}
-	b.el.Class(b.variantClass, sizeClass)
 
-	return b.el
+	ctx.Props.Class(b.variantClass)
+	ctx.Props.Class(sizeClass)
 }

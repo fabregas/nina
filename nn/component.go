@@ -8,7 +8,10 @@ import (
 type Component interface {
 	View() Node
 
+	Update()
 	AddCleanup(func())
+
+	setUpdater(func())
 	destroy()
 
 	parent() Component
@@ -16,8 +19,6 @@ type Component interface {
 
 	setContext(typ reflect.Type, val any)
 	getContext(typ reflect.Type) (any, bool)
-	exportContext() any
-	importContext(any)
 }
 
 // componentNode — is a special це tree node that contain whole component
@@ -66,10 +67,17 @@ type BaseComponent struct {
 	cleanups   []func()
 	contextMap map[reflect.Type]any
 	parentC    Component
+	updater    func()
 }
 
-func (c BaseComponent) AsNode() Node {
-	panic("system error: called ToNode at component object")
+func (s *BaseComponent) Update() {
+	if s.updater != nil {
+		s.updater()
+	}
+}
+
+func (s *BaseComponent) setUpdater(trigger func()) {
+	s.updater = trigger
 }
 
 func (c *BaseComponent) AddCleanup(fn func()) {
@@ -104,15 +112,6 @@ func (b *BaseComponent) getContext(typ reflect.Type) (any, bool) {
 	}
 	val, ok := b.contextMap[typ]
 	return val, ok
-}
-
-func (b *BaseComponent) importContext(c any) {
-	newCtx := c.(map[reflect.Type]any)
-	b.contextMap = newCtx
-}
-
-func (b *BaseComponent) exportContext() any {
-	return b.contextMap
 }
 
 func ProvideContext[T any](c Component, value T) {

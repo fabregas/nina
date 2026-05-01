@@ -29,35 +29,32 @@ type comboboxTriggerBuilder struct {
 }
 
 func ComboboxTrigger() *comboboxTriggerBuilder {
-	el := nn.Button().
-		Attr("data-slot", "combobox-trigger").
-		Class("[&_svg:not([class*='size-'])]:size-4")
-
 	b := &comboboxTriggerBuilder{}
-	b.baseBuilder = base(b, el)
+	b.baseBuilder = base(b, "button")
+	b.Attr("data-slot", "combobox-trigger").
+		Class("[&_svg:not([class*='size-'])]:size-4")
 
 	return b
 }
 
-func (t *comboboxTriggerBuilder) build() *nn.Element {
-	t.el.Children(icons.ChevronDown().Class("pointer-events-none size-4 text-muted-foreground"))
-
-	return t.el
+func (t *comboboxTriggerBuilder) build(ctx *buildContext) {
+	ctx.Children = append(
+		ctx.Children,
+		icons.ChevronDown().Class("pointer-events-none size-4 text-muted-foreground"),
+	)
 }
 
 // ==========================================
 // COMBOBOX CLEAR
 // ==========================================
 
-func ComboboxClear() *simpleBuilder {
-	return simple(
-		InputGroupButton().Ghost().SizeIconXs().
-			Attr("data-slot", "combobox-clear").
-			Class("inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground size-6").
-			Children(
-				icons.X().Class("pointer-events-none size-4"),
-			).El(),
-	)
+func ComboboxClear() *buttonBuilder {
+	return InputGroupButton().Ghost().SizeIconXs().
+		Attr("data-slot", "combobox-clear").
+		Class("inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground size-6").
+		Children(
+			icons.X().Class("pointer-events-none size-4"),
+		)
 }
 
 // ==========================================
@@ -87,16 +84,14 @@ func (b *comboboxInput) View() nn.Node {
 	el := InputGroup().
 		Class("w-auto").
 		Attr("data-slot", "combobox-input-group").
-		El().
 		Ref(ctx.anchorRef).
-		OnKeyDown(ctx.onKeyDown)
+		On("keydown", ctx.onKeyDown)
 
 	input := InputGroupInput().
 		Attr("data-slot", "combobox-input").
 		Disabled(b.disabled).
 		Placeholder(b.placeholder).
-		El().
-		OnInput(ctx.onInput).
+		On("input", ctx.onInput).
 		On("focus", ctx.onToggle).
 		On("focusout", func(nn.Event) {
 			ctx.closeContent()
@@ -118,8 +113,8 @@ func (b *comboboxInput) View() nn.Node {
 				Class("group-has-data-[slot=combobox-clear]/input-group:hidden data-pressed:bg-transparent").
 				Disabled(b.disabled).
 				AsChild(
-					ComboboxTrigger().El(),
-				).OnEvent(ctx.onToggle),
+					ComboboxTrigger(),
+				).OnClick(ctx.onToggle),
 		)
 	}
 
@@ -130,8 +125,9 @@ func (b *comboboxInput) View() nn.Node {
 	}
 
 	el.Children(input, addon)
+	el.Children(b.children...)
 
-	return b.ApplyProps(el)
+	return b.ApplyProps(el.AsNode())
 }
 
 func (b *comboboxInput) Placeholder(p string) *comboboxInput {
@@ -162,9 +158,9 @@ func (b *comboboxInput) HideTrigger(h bool) *comboboxInput {
 // ==========================================
 
 func ComboboxGroup(id string) *simpleBuilder {
-	return simple(
-		nn.Div().Attr("data-slot", "combobox-group").Key("group-" + id),
-	)
+	return simple("div").
+		Attr("data-slot", "combobox-group").
+		Key("group-" + id)
 }
 
 // ==========================================
@@ -172,11 +168,9 @@ func ComboboxGroup(id string) *simpleBuilder {
 // ==========================================
 
 func ComboboxLabel() *simpleBuilder {
-	return simple(
-		nn.Div().
-			Attr("data-slot", "combobox-label").
-			Class("px-3 py-2.5 text-xs text-muted-foreground"),
-	)
+	return simple("div").
+		Attr("data-slot", "combobox-label").
+		Class("px-3 py-2.5 text-xs text-muted-foreground")
 }
 
 // ==========================================
@@ -184,9 +178,8 @@ func ComboboxLabel() *simpleBuilder {
 // ==========================================
 
 func ComboboxCollection() *simpleBuilder {
-	return simple(
-		nn.Div().Attr("data-slot", "combobox-collection"),
-	)
+	return simple("div").
+		Attr("data-slot", "combobox-collection")
 }
 
 // ==========================================
@@ -194,11 +187,9 @@ func ComboboxCollection() *simpleBuilder {
 // ==========================================
 
 func ComboboxSeparator() *simpleBuilder {
-	return simple(
-		nn.Div().
-			Attr("data-slot", "combobox-separator").
-			Class("-mx-1.5 my-1.5 h-px bg-border"),
-	)
+	return simple("div").
+		Attr("data-slot", "combobox-separator").
+		Class("-mx-1.5 my-1.5 h-px bg-border")
 }
 
 // ==========================================
@@ -206,11 +197,9 @@ func ComboboxSeparator() *simpleBuilder {
 // ==========================================
 
 func ComboboxContent() *simpleBuilder {
-	return simple(
-		nn.Div().
-			Attr("data-slot", "combobox-content").
-			Class("cn-menu-target cn-menu-translucent group/combobox-content relative max-h-(--available-height) w-(--anchor-width) max-w-(--available-width) min-w-(--anchor-width) origin-(--transform-origin) overflow-hidden rounded-3xl bg-popover text-popover-foreground shadow-lg ring-1 ring-foreground/5 duration-300 data-[chips=true]:min-w-(--anchor-width) data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 *:data-[slot=input-group]:m-1.5 *:data-[slot=input-group]:mb-0 *:data-[slot=input-group]:h-8 *:data-[slot=input-group]:border-input/30 *:data-[slot=input-group]:bg-input/50 *:data-[slot=input-group]:shadow-none dark:ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95"),
-	)
+	return simple("div").
+		Attr("data-slot", "combobox-content").
+		Class("cn-menu-target cn-menu-translucent group/combobox-content relative max-h-(--available-height) w-(--anchor-width) max-w-(--available-width) min-w-(--anchor-width) origin-(--transform-origin) overflow-hidden rounded-3xl bg-popover text-popover-foreground shadow-lg ring-1 ring-foreground/5 duration-300 data-[chips=true]:min-w-(--anchor-width) data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 *:data-[slot=input-group]:m-1.5 *:data-[slot=input-group]:mb-0 *:data-[slot=input-group]:h-8 *:data-[slot=input-group]:border-input/30 *:data-[slot=input-group]:bg-input/50 *:data-[slot=input-group]:shadow-none dark:ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95")
 }
 
 // ==========================================
@@ -218,11 +207,9 @@ func ComboboxContent() *simpleBuilder {
 // ==========================================
 
 func ComboboxList() *simpleBuilder {
-	return simple(
-		nn.Div().
-			Attr("data-slot", "combobox-list").
-			Class("no-scrollbar max-h-[min(calc(--spacing(72)---spacing(9)),calc(var(--available-height)---spacing(9)))] scroll-py-1.5 overflow-y-auto overscroll-contain p-1.5 data-empty:p-0"),
-	)
+	return simple("div").
+		Attr("data-slot", "combobox-list").
+		Class("no-scrollbar max-h-[min(calc(--spacing(72)---spacing(9)),calc(var(--available-height)---spacing(9)))] scroll-py-1.5 overflow-y-auto overscroll-contain p-1.5 data-empty:p-0")
 }
 
 // ==========================================
@@ -237,14 +224,12 @@ type comboboxItemBuilder struct {
 }
 
 func ComboboxItem(value string) *comboboxItemBuilder {
-	el := nn.Div().
-		Attr("role", "option").
+	b := &comboboxItemBuilder{value: value}
+	b.baseBuilder = base(b, "div")
+	b.Attr("role", "option").
 		Attr("data-slot", "combobox-item").
 		Attr("value", value).
 		Class("relative flex w-full cursor-default items-center gap-2.5 rounded-2xl py-2 pr-8 pl-3 text-sm font-medium outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground not-data-[variant=destructive]:data-highlighted:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4")
-
-	b := &comboboxItemBuilder{value: value}
-	b.baseBuilder = base(b, el)
 
 	return b
 }
@@ -254,7 +239,7 @@ func (b *comboboxItemBuilder) Selected(s bool) *comboboxItemBuilder {
 	return b
 }
 
-func (b *comboboxItemBuilder) build() *nn.Element {
+func (b *comboboxItemBuilder) build(ctx *buildContext) {
 	if b.selected {
 		indicator := nn.Span().
 			Attr("data-slot", "combobox-item-indicator").
@@ -263,10 +248,10 @@ func (b *comboboxItemBuilder) build() *nn.Element {
 				icons.Check().Class("pointer-events-none"),
 			)
 
-		b.el.Children(indicator)
+		ctx.Children = append(ctx.Children, indicator)
 	}
 
-	return b.el.Key("item-" + b.value)
+	ctx.Props.Key("item-" + b.value)
 }
 
 // ==========================================
@@ -274,11 +259,9 @@ func (b *comboboxItemBuilder) build() *nn.Element {
 // ==========================================
 
 func ComboboxEmpty() *simpleBuilder {
-	return simple(
-		nn.Div().
-			Attr("data-slot", "combobox-empty").
-			Class("w-full justify-center py-2 text-center text-sm text-muted-foreground group-data-empty/combobox-content:flex"),
-	)
+	return simple("div").
+		Attr("data-slot", "combobox-empty").
+		Class("w-full justify-center py-2 text-center text-sm text-muted-foreground group-data-empty/combobox-content:flex")
 }
 
 // ==========================================
@@ -299,7 +282,7 @@ func ComboboxChips() *comboboxChips {
 func (c *comboboxChips) View() nn.Node {
 	ctx := nn.GetContext[*comboboxInternalCtx](c)
 
-	return c.ApplyProps(
+	return c.ApplyPropsWithChildren(
 		nn.Div().
 			Attr("data-slot", "combobox-chips").
 			Class("flex min-h-9 flex-wrap items-center gap-1.5 rounded-3xl border border-transparent bg-input/50 bg-clip-padding px-3 py-1.5 text-sm transition-[color,box-shadow,background-color] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30 has-aria-invalid:border-destructive has-aria-invalid:ring-3 has-aria-invalid:ring-destructive/20 has-data-[slot=combobox-chip]:px-1.5 dark:has-aria-invalid:border-destructive/50 dark:has-aria-invalid:ring-destructive/40").
@@ -355,7 +338,7 @@ func (b *comboboxChipInput) View() nn.Node {
 		el.Attr("aria-invalid", "true")
 	}
 
-	return b.ApplyProps(el)
+	return b.ApplyPropsWithChildren(el)
 }
 
 // ==========================================
@@ -394,7 +377,7 @@ func (b *comboboxChip) View() nn.Node {
 			e.PreventUpdate()
 		})
 
-	el = b.ApplyProps(el)
+	el.Children(b.children...)
 
 	if b.showRemove {
 		btn := Button().
@@ -407,7 +390,7 @@ func (b *comboboxChip) View() nn.Node {
 			Children(
 				icons.X().Class("pointer-events-none"),
 			).
-			OnEvent(func(e nn.Event) {
+			OnClick(func(e nn.Event) {
 				e.PreventDefault()
 				e.PreventUpdate()
 				val := e.Target().Call("getAttribute", "bind-val").String()
@@ -418,7 +401,7 @@ func (b *comboboxChip) View() nn.Node {
 		el.Children(btn)
 	}
 
-	return el
+	return b.ApplyProps(el)
 }
 
 // ==========================================
@@ -451,7 +434,7 @@ type comboboxState[T any] struct {
 }
 
 type combobox[T any] struct {
-	nn.BaseComponent
+	uiComponent[*combobox[T]]
 	nn.State[comboboxState[T]]
 
 	config ComboboxConfig[T]
@@ -469,6 +452,7 @@ func Combobox[T any](cfg ComboboxConfig[T]) *combobox[T] {
 		config:    cfg,
 		anchorRef: nn.NewRef(),
 	}
+	c.init(c)
 
 	c.pos = Positioner(c.anchorRef).
 		OnClose(func() {

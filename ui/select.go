@@ -13,12 +13,10 @@ import (
 // ==========================================
 
 func SelectGroup() *simpleBuilder {
-	return simple(
-		nn.Div().
-			Attr("data-slot", "select-group").
-			Attr("role", "group").
-			Class("scroll-my-1.5 p-1.5"),
-	)
+	return simple("div").
+		Attr("data-slot", "select-group").
+		Attr("role", "group").
+		Class("scroll-my-1.5 p-1.5")
 }
 
 // ==========================================
@@ -26,11 +24,9 @@ func SelectGroup() *simpleBuilder {
 // ==========================================
 
 func SelectValue() *simpleBuilder {
-	return simple(
-		nn.Span().
-			Attr("data-slot", "select-value").
-			Class("flex flex-1 text-left"),
-	)
+	return simple("span").
+		Attr("data-slot", "select-value").
+		Class("flex flex-1 text-left")
 }
 
 // ==========================================
@@ -39,43 +35,34 @@ func SelectValue() *simpleBuilder {
 
 type selectTriggerBuilder struct {
 	baseBuilder[*selectTriggerBuilder]
-
-	onClick func(nn.Event)
 }
 
 func SelectTrigger() *selectTriggerBuilder {
 	baseClass := "flex w-fit items-center justify-between gap-1.5 rounded-3xl border border-transparent bg-input/50 px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow,background-color] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-placeholder:text-muted-foreground data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
 
-	btn := nn.Button().
-		Attr("type", "button").
+	b := &selectTriggerBuilder{}
+	b.baseBuilder = base(b, "button")
+	b.Attr("type", "button").
 		Attr("role", "combobox").
 		Attr("data-slot", "select-trigger").
 		Attr("data-size", "default").
 		Class(baseClass)
 
-	b := &selectTriggerBuilder{}
-	b.baseBuilder = base(b, btn)
-
 	return b
 }
 
-func (t *selectTriggerBuilder) build() *nn.Element {
+func (t *selectTriggerBuilder) build(ctx *buildContext) {
 	// icon must be last child
-	return t.el.Children(icons.ChevronDown())
-}
-
-func (t *selectTriggerBuilder) OnClick(fn func(nn.Event)) *selectTriggerBuilder {
-	t.el.OnClick(fn)
-	return t
+	ctx.Children = append(ctx.Children, icons.ChevronDown())
 }
 
 func (t *selectTriggerBuilder) SizeDefault() *selectTriggerBuilder {
-	t.el.Attr("data-size", "default")
+	t.Attr("data-size", "default")
 	return t
 }
 
 func (t *selectTriggerBuilder) SizeSm() *selectTriggerBuilder {
-	t.el.Attr("data-size", "sm")
+	t.Attr("data-size", "sm")
 	return t
 }
 
@@ -90,56 +77,50 @@ type selectContentBuilder struct {
 func SelectContent() *selectContentBuilder {
 	baseClass := "cn-menu-target cn-menu-translucent relative isolate z-50 max-h-(--available-height) w-(--anchor-width) min-w-36 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-3xl bg-popover text-popover-foreground shadow-lg ring-1 ring-foreground/5 duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 dark:ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95"
 
-	el := nn.Div().
-		Attr("data-slot", "select-content").
-		Class(baseClass)
-
 	b := &selectContentBuilder{}
-	b.baseBuilder = base(b, el)
-
-	b.SideLeft().AlignTrigger(true)
+	b.baseBuilder = base(b, "div")
+	b.Attr("data-slot", "select-content").
+		Class(baseClass).
+		SideLeft().
+		AlignTrigger(true)
 
 	return b
 }
 
 func (c *selectContentBuilder) SideTop() *selectContentBuilder {
-	c.el.Attr("data-side", "top")
+	c.Attr("data-side", "top")
 	return c
 }
 func (c *selectContentBuilder) SideBottom() *selectContentBuilder {
-	c.el.Attr("data-side", "bottom")
+	c.Attr("data-side", "bottom")
 	return c
 }
 func (c *selectContentBuilder) SideLeft() *selectContentBuilder {
-	c.el.Attr("data-side", "left")
+	c.Attr("data-side", "left")
 	return c
 }
 func (c *selectContentBuilder) SideRight() *selectContentBuilder {
-	c.el.Attr("data-side", "right")
+	c.Attr("data-side", "right")
 	return c
 }
 
 func (c *selectContentBuilder) AlignTrigger(align bool) *selectContentBuilder {
 	if align {
-		c.el.Attr("data-align-trigger", "true")
+		c.Attr("data-align-trigger", "true")
 	} else {
-		c.el.Attr("data-align-trigger", "false")
+		c.Attr("data-align-trigger", "false")
 	}
 	return c
 }
 
-func (c *selectContentBuilder) build() *nn.Element {
-	return c.el
-}
+func (c *selectContentBuilder) build(_ *buildContext) {}
 
 // --- SELECT LABEL ---
 
 func SelectLabel() *simpleBuilder {
-	return simple(
-		nn.Div().
-			Attr("data-slot", "select-label").
-			Class("px-3 py-2.5 text-xs text-muted-foreground"),
-	)
+	return simple("div").
+		Attr("data-slot", "select-label").
+		Class("px-3 py-2.5 text-xs text-muted-foreground")
 }
 
 // ==========================================
@@ -155,11 +136,9 @@ type selectItemBuilder struct {
 }
 
 func SelectItem(value string) *selectItemBuilder {
-	item := nn.Span().
-		Class("flex flex-1 shrink-0 gap-2 whitespace-nowrap")
-
 	b := &selectItemBuilder{}
-	b.baseBuilder = base(b, item)
+	b.baseBuilder = base(b, "span")
+	b.Class("flex flex-1 shrink-0 gap-2 whitespace-nowrap")
 
 	return b
 }
@@ -178,11 +157,9 @@ func (i *selectItemBuilder) Disabled(disabled bool) *selectItemBuilder {
 	return i
 }
 
-func (i *selectItemBuilder) build() *nn.Element {
-	return i.el
-}
+func (i *selectItemBuilder) build(_ *buildContext) {}
 
-func (i *selectItemBuilder) wrap(target *nn.Element) *nn.Element {
+func (i *selectItemBuilder) wrap(target nn.Node) nn.Node {
 	baseClass := "relative flex w-full cursor-default items-center gap-2.5 rounded-2xl py-2 pr-8 pl-3 text-sm font-medium outline-hidden select-none hover:bg-accent hover:text-accent-foreground not-data-[variant=destructive]:hover:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2"
 
 	wrapper := nn.Div().
@@ -222,11 +199,10 @@ func (i *selectItemBuilder) wrap(target *nn.Element) *nn.Element {
 // ==========================================
 
 func SelectSeparator() *simpleBuilder {
-	return simple(nn.Div().
+	return simple("div").
 		Attr("data-slot", "select-separator").
 		Attr("role", "separator").
-		Class("pointer-events-none -mx-1.5 my-1.5 h-px bg-border"),
-	)
+		Class("pointer-events-none -mx-1.5 my-1.5 h-px bg-border")
 }
 
 // ==========================================
@@ -236,13 +212,11 @@ func SelectSeparator() *simpleBuilder {
 func SelectScrollUpButton() *simpleBuilder {
 	baseClass := "top-0 z-10 flex w-full cursor-default items-center justify-center bg-popover py-1 [&_svg:not([class*='size-'])]:size-4"
 
-	return simple(
-		nn.Div().
-			Attr("data-slot", "select-scroll-up-button").
-			Attr("aria-hidden", "true").
-			Children(icons.ChevronUp()).
-			Class(baseClass),
-	)
+	return simple("div").
+		Attr("data-slot", "select-scroll-up-button").
+		Attr("aria-hidden", "true").
+		Children(icons.ChevronUp()).
+		Class(baseClass)
 }
 
 // ==========================================
@@ -252,13 +226,11 @@ func SelectScrollUpButton() *simpleBuilder {
 func SelectScrollDownButton() *simpleBuilder {
 	baseClass := "bottom-0 z-10 flex w-full cursor-default items-center justify-center bg-popover py-1 [&_svg:not([class*='size-'])]:size-4"
 
-	return simple(
-		nn.Div().
-			Attr("data-slot", "select-scroll-down-button").
-			Attr("aria-hidden", "true").
-			Class(baseClass).
-			Children(icons.ChevronDown()),
-	)
+	return simple("div").
+		Attr("data-slot", "select-scroll-down-button").
+		Attr("aria-hidden", "true").
+		Class(baseClass).
+		Children(icons.ChevronDown())
 }
 
 // ==========================================
@@ -345,7 +317,7 @@ func SelectController(id string, state *SelectState, options []SelectOption, pla
 		OnClick(toggleOpen).
 		Children(
 			SelectValue().Children(nn.Text(displayValue)),
-		).El().OnGlobal("click", globalClick)
+		).OnGlobal("click", globalClick)
 
 	var content nn.AsNode
 	if state.IsOpen {
@@ -367,7 +339,7 @@ func SelectController(id string, state *SelectState, options []SelectOption, pla
 				Class("min-w-[8rem]").
 				Children(
 					SelectGroup().Children(items...),
-				).El().Attr("style", styleStr).Attr("id", menuID),
+				).Attr("style", styleStr).Attr("id", menuID),
 		)
 	}
 

@@ -34,7 +34,7 @@ func (t *collapsibleTrigger) View() nn.Node {
 			e.PreventUpdate()
 		})
 
-	return t.ApplyProps(el)
+	return t.ApplyPropsWithChildren(el)
 }
 
 // ==========================================
@@ -58,12 +58,12 @@ func (c *collapsibleContent) View() nn.Node {
 	isOpen := state.isOpen.Get(c)
 
 	el := nn.Div().Attr("data-slot", "collapsible-content")
-	c.props.ApplyTo(el)
+
 	if isOpen {
 		el.Children(c.children...)
 	}
 
-	return el
+	return c.ApplyProps(el)
 }
 
 // ==========================================
@@ -90,8 +90,16 @@ func Collapsible() *collapsible {
 }
 
 func (c *collapsible) View() nn.Node {
+	isOpen := c.Data.isOpen.Get(c)
+	stateStr := "closed"
+	if isOpen {
+		stateStr = "open"
+	}
+
 	return c.ApplyProps(
 		nn.Div().
-			Attr("data-slot", "collapsible"),
+			Attr("data-slot", "collapsible").
+			Attr("data-state", stateStr).
+			Class("group/collapsible"),
 	)
 }

@@ -6,12 +6,10 @@ import (
 )
 
 func InputGroup() *simpleBuilder {
-	return simple(
-		nn.Div().
-			Attr("data-slot", "input-group").
-			Attr("role", "group").
-			Class("group/input-group relative flex h-9 w-full min-w-0 items-center rounded-4xl border border-transparent bg-input/50 transition-[color,box-shadow,background-color] outline-none in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:ring-0 has-data-[align=block-end]:rounded-3xl has-data-[align=block-start]:rounded-3xl has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-3 has-[[data-slot=input-group-control]:focus-visible]:ring-ring/30 has-[[data-slot][aria-invalid=true]]:border-destructive has-[[data-slot][aria-invalid=true]]:ring-3 has-[[data-slot][aria-invalid=true]]:ring-destructive/20 has-[textarea]:rounded-2xl has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>textarea]:h-auto dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40 has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-end]]:[&>input]:pr-1.5 has-[>[data-align=inline-start]]:[&>input]:pl-1.5"),
-	)
+	return simple("div").
+		Attr("data-slot", "input-group").
+		Attr("role", "group").
+		Class("group/input-group relative flex h-9 w-full min-w-0 items-center rounded-4xl border border-transparent bg-input/50 transition-[color,box-shadow,background-color] outline-none in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:ring-0 has-data-[align=block-end]:rounded-3xl has-data-[align=block-start]:rounded-3xl has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-3 has-[[data-slot=input-group-control]:focus-visible]:ring-ring/30 has-[[data-slot][aria-invalid=true]]:border-destructive has-[[data-slot][aria-invalid=true]]:ring-3 has-[[data-slot][aria-invalid=true]]:ring-destructive/20 has-[textarea]:rounded-2xl has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>textarea]:h-auto dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40 has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-end]]:[&>input]:pr-1.5 has-[>[data-align=inline-start]]:[&>input]:pl-1.5")
 }
 
 //--------------------------------
@@ -21,8 +19,9 @@ type inputGroupAddonBuilder struct {
 }
 
 func InputGroupAddon() *inputGroupAddonBuilder {
-	el := nn.Div().
-		Attr("role", "group").
+	g := &inputGroupAddonBuilder{}
+	g.baseBuilder = base(g, "div")
+	g.Attr("role", "group").
 		Attr("data-slot", "input-group-addon").
 		Class("flex items-center justify-center [&_svg:not([class*='size-'])]:size-4").
 		OnClick(func(e nn.Event) {
@@ -42,41 +41,36 @@ func InputGroupAddon() *inputGroupAddonBuilder {
 				}
 			}
 		})
-
-	g := &inputGroupAddonBuilder{}
-	g.baseBuilder = base(g, el)
 	g.AlignInlineStart()
 
 	return g
 }
 
 func (g *inputGroupAddonBuilder) AlignInlineStart() *inputGroupAddonBuilder {
-	g.el.Attr("data-align", "inline-start")
-	g.el.Class("order-first pl-3 has-[>button]:-ml-1 has-[>kbd]:-ml-1")
+	g.Attr("data-align", "inline-start")
+	g.Class("order-first pl-3 has-[>button]:-ml-1 has-[>kbd]:-ml-1")
 	return g
 }
 
 func (g *inputGroupAddonBuilder) AlignInlineEnd() *inputGroupAddonBuilder {
-	g.el.Attr("data-align", "inline-end")
-	g.el.Class("order-last pr-3 has-[>button]:-mr-1 has-[>kbd]:-mr-1")
+	g.Attr("data-align", "inline-end")
+	g.Class("order-last pr-3 has-[>button]:-mr-1 has-[>kbd]:-mr-1")
 	return g
 }
 
 func (g *inputGroupAddonBuilder) AlignBlockStart() *inputGroupAddonBuilder {
-	g.el.Attr("data-align", "block-start")
-	g.el.Class("order-first w-full justify-start px-3 pt-3 group-has-[>input]/input-group:pt-3.5 [.border-b]:pb-3.5")
+	g.Attr("data-align", "block-start")
+	g.Class("order-first w-full justify-start px-3 pt-3 group-has-[>input]/input-group:pt-3.5 [.border-b]:pb-3.5")
 	return g
 }
 
 func (g *inputGroupAddonBuilder) AlignBlockEnd() *inputGroupAddonBuilder {
-	g.el.Attr("data-align", "block-end")
-	g.el.Class("order-last w-full justify-start px-3 pb-3 group-has-[>input]/input-group:pb-3.5 [.border-t]:pt-3.5")
+	g.Attr("data-align", "block-end")
+	g.Class("order-last w-full justify-start px-3 pb-3 group-has-[>input]/input-group:pb-3.5 [.border-t]:pt-3.5")
 	return g
 }
 
-func (g *inputGroupAddonBuilder) build() *nn.Element {
-	return g.el
-}
+func (g *inputGroupAddonBuilder) build(_ *buildContext) {}
 
 // ==========================================
 // INPUT GROUP BUTTON
@@ -111,11 +105,9 @@ func InputGroupInput() *inputBuilder {
 func InputGroupText() *simpleBuilder {
 	baseClass := "flex items-center gap-2 text-sm text-muted-foreground [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4"
 
-	return simple(
-		nn.Span().
-			Attr("data-slot", "input-group-text").
-			Class(baseClass),
-	)
+	return simple("span").
+		Attr("data-slot", "input-group-text").
+		Class(baseClass)
 }
 
 // ---------- TODO move to some helpers components ------
@@ -149,7 +141,7 @@ func (i *passwordInput) View() nn.Node {
 	eyeBtn := Button().
 		Ghost().
 		SizeIconSm().
-		OnClick(func() { i.toggle() })
+		OnClick(func(nn.Event) { i.toggle() })
 
 	input := InputGroupInput().ID(i.id).Bind(i.val)
 
@@ -167,5 +159,5 @@ func (i *passwordInput) View() nn.Node {
 		InputGroupAddon().AlignInlineEnd().Children(
 			eyeBtn,
 		),
-	).El()
+	).AsNode()
 }

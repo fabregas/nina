@@ -107,22 +107,33 @@ func (e *Element) Class(classes ...string) *Element {
 	return e
 }
 
-func (e *Element) MergeEl(source *Element) *Element {
-	if source.classes != "" {
-		e.Class(source.classes)
+func (e *Element) Clone() *Element {
+	clone := &Element{
+		tag:     e.tag,
+		classes: e.classes,
+		key:     e.key,
+		rawHTML: e.rawHTML,
+		ref:     e.ref,
 	}
 
-	for k, v := range source.attrs {
-		e.Attr(k, v)
-	}
-
-	if source.listeners != nil {
-		for k, v := range source.listeners.events {
-			e.addListener(k.name, v, k.isGlobal)
+	if e.attrs != nil {
+		clone.attrs = make(map[string]string, len(e.attrs))
+		for k, v := range e.attrs {
+			clone.attrs[k] = v
 		}
 	}
 
-	return e
+	if e.listeners != nil {
+		for einfo, handler := range e.listeners.events {
+			clone.addListener(einfo.name, handler, einfo.isGlobal)
+		}
+	}
+
+	if len(e.children) > 0 {
+		clone.children = append([]Node{}, e.children...)
+	}
+
+	return clone
 }
 
 func (e *Element) ClassFunc(f func() string) *Element {
@@ -200,16 +211,13 @@ func intoNodesList(children []AsNode) []Node {
 		if n == nil {
 			continue
 		}
-		if comp, isComponent := n.(Component); isComponent {
-			sysNode := &componentNode{comp: comp}
-			ret = append(ret, sysNode)
-		} else {
-			cn := n.AsNode()
-			if isNilNode(cn) {
-				continue
-			}
-			ret = append(ret, cn)
+
+		cn := n.AsNode()
+		if isNilNode(cn) {
+			continue
 		}
+
+		ret = append(ret, cn)
 	}
 
 	return ret

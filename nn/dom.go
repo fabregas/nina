@@ -90,9 +90,9 @@ func createDOM(parentDOM js.Value, vnode Node) js.Value {
 
 	case *componentNode:
 		if carrier, ok := n.comp.(stateCarrier); ok {
-			carrier.setUpdater(func() { nina.scheduleUpdate(n.comp) })
 			carrier.importState(nil)
 		}
+		n.comp.setUpdater(func() { nina.scheduleUpdate(n.comp) })
 
 		prevComponent := currentRenderingComponent
 		currentRenderingComponent = n.comp
@@ -352,13 +352,13 @@ func patch(parentDOM js.Value, oldNode, newNode Node) {
 
 		if newCarrier, ok := newComp.comp.(stateCarrier); ok {
 			oldCarrier := oldComp.comp.(stateCarrier)
-			newCarrier.setUpdater(func() { nina.scheduleUpdate(newComp.comp) })
 			// copy old state into new component
 			newCarrier.importState(oldCarrier.exportState())
 
 		}
-
-		newComp.comp.importContext(oldComp.comp.exportContext())
+		newUpdater := func() { nina.scheduleUpdate(newComp.comp) }
+		newComp.comp.setUpdater(newUpdater)
+		oldComp.comp.setUpdater(newUpdater)
 
 		if pureComp, ok := newComp.comp.(Pure); ok {
 			newHash := pureComp.Hash()

@@ -10,11 +10,9 @@ import (
 // ==========================================
 
 func dialogOverlay() *simpleBuilder {
-	return simple(
-		nn.Div().
-			Attr("data-slot", "dialog-overlay").
-			Class("fixed inset-0 isolate z-50 bg-black/30 duration-300 supports-backdrop-filter:backdrop-blur-sm data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"),
-	)
+	return simple("div").
+		Attr("data-slot", "dialog-overlay").
+		Class("fixed inset-0 isolate z-50 bg-black/30 duration-300 supports-backdrop-filter:backdrop-blur-sm data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0")
 }
 
 type dialogContent struct {
@@ -48,7 +46,7 @@ func (c *dialogContent) View() nn.Node {
 		el.Attr("data-open", "true")
 	}
 
-	el = c.ApplyProps(el)
+	el.Children(c.children...)
 
 	closeFn := func(e nn.Event) {
 		e.PreventUpdate()
@@ -65,11 +63,11 @@ func (c *dialogContent) View() nn.Node {
 				Class("absolute top-4 right-4").
 				Attr("data-slot", "dialog-close").
 				Children(icons.X()).
-				OnEvent(closeFn),
+				OnClick(closeFn),
 		)
 	}
 
-	return el
+	return c.ApplyProps(el)
 }
 
 // ==========================================
@@ -77,11 +75,9 @@ func (c *dialogContent) View() nn.Node {
 // ==========================================
 
 func DialogHeader() *simpleBuilder {
-	return simple(
-		nn.Div().
-			Attr("data-slot", "dialog-header").
-			Class("flex flex-col gap-1.5"),
-	)
+	return simple("div").
+		Attr("data-slot", "dialog-header").
+		Class("flex flex-col gap-1.5")
 }
 
 // ==========================================
@@ -89,11 +85,9 @@ func DialogHeader() *simpleBuilder {
 // ==========================================
 
 func DialogFooter() *simpleBuilder {
-	return simple(
-		nn.Div().
-			Attr("data-slot", "dialog-footer").
-			Class("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"),
-	)
+	return simple("div").
+		Attr("data-slot", "dialog-footer").
+		Class("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end")
 }
 
 // ==========================================
@@ -101,11 +95,9 @@ func DialogFooter() *simpleBuilder {
 // ==========================================
 
 func DialogTitle() *simpleBuilder {
-	return simple(
-		nn.Div().
-			Attr("data-slot", "dialog-title").
-			Class("cn-font-heading text-base leading-none font-medium"),
-	)
+	return simple("div").
+		Attr("data-slot", "dialog-title").
+		Class("cn-font-heading text-base leading-none font-medium")
 }
 
 // ==========================================
@@ -113,11 +105,9 @@ func DialogTitle() *simpleBuilder {
 // ==========================================
 
 func DialogDescription() *simpleBuilder {
-	return simple(
-		nn.Div().
-			Attr("data-slot", "dialog-description").
-			Class("text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground"),
-	)
+	return simple("div").
+		Attr("data-slot", "dialog-description").
+		Class("text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground")
 }
 
 // ==========================================

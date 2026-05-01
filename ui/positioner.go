@@ -18,7 +18,7 @@ type positionerState struct {
 }
 
 type positioner struct {
-	nn.BaseComponent
+	uiComponent[*positioner]
 	nn.State[positionerState]
 
 	side      string
@@ -37,6 +37,7 @@ func Positioner(anchorRef *nn.Ref) *positioner {
 		anchorRef:  anchorRef,
 		contentRef: nn.NewRef(),
 	}
+	p.init(p)
 
 	return p
 }
