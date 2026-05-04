@@ -1,88 +1,17 @@
 package nn
 
-import "syscall/js"
+type Event interface {
+	needUpdate() bool
 
-type Event struct {
-	jsEvent js.Value
+	PreventUpdate()
+	PreventDefault()
+	StopPropagation()
+	TargetValue() string
+	TargetChecked() bool
+	Key() string
 
-	skipUpdate *bool
-}
+	CurrentTarget() NativeNode
+	Target() NativeNode
 
-func (e *Event) PreventUpdate() {
-	*e.skipUpdate = true
-}
-
-// PreventDefault stops default browser behavior (for example link forward)
-func (e Event) PreventDefault() {
-	if !e.jsEvent.IsUndefined() && !e.jsEvent.IsNull() {
-		e.jsEvent.Call("preventDefault")
-	}
-}
-
-// StopPropagation stops event "popup-ing" up on DOM tree
-func (e Event) StopPropagation() {
-	if !e.jsEvent.IsUndefined() && !e.jsEvent.IsNull() {
-		e.jsEvent.Call("stopPropagation")
-	}
-}
-
-func (e Event) CurrentTarget() js.Value {
-	var ret js.Value
-
-	if !e.jsEvent.IsUndefined() && !e.jsEvent.IsNull() {
-		ret = e.jsEvent.Get("currentTarget")
-	}
-
-	return ret
-}
-func (e Event) Target() js.Value {
-	var ret js.Value
-
-	if !e.jsEvent.IsUndefined() && !e.jsEvent.IsNull() {
-		ret = e.jsEvent.Get("target")
-	}
-
-	return ret
-}
-
-func (e Event) TargetValue() string {
-	if e.jsEvent.IsUndefined() || e.jsEvent.IsNull() {
-		return ""
-	}
-	target := e.jsEvent.Get("target")
-	if target.IsUndefined() || target.IsNull() {
-		return ""
-	}
-	return target.Get("value").String()
-}
-
-func (e Event) Raw() js.Value {
-	return e.jsEvent
-}
-
-func (e Event) TargetChecked() bool {
-	if e.jsEvent.IsUndefined() || e.jsEvent.IsNull() {
-		return false
-	}
-	target := e.jsEvent.Get("target")
-	if target.IsUndefined() || target.IsNull() {
-		return false
-	}
-
-	return target.Get("checked").Bool()
-}
-
-func (e Event) Key() string {
-	var ret js.Value
-
-	if e.jsEvent.IsUndefined() || e.jsEvent.IsNull() {
-		return ""
-	}
-
-	ret = e.jsEvent.Get("key")
-	if ret.IsUndefined() || ret.IsNull() {
-		return ""
-	}
-
-	return ret.String()
+	Renderer() Renderer
 }

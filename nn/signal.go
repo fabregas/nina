@@ -30,6 +30,6 @@ func (s *Signal[T]) Set(newValue T) {
 	s.value = newValue
 
 	for sub := range s.subscribers {
-		Update(sub)
+		sub.Update()
 	}
 }

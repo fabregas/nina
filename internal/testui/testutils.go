@@ -1,3 +1,5 @@
+//go:build js && wasm
+
 package testui
 
 import (
@@ -5,6 +7,10 @@ import (
 	"syscall/js"
 	"testing"
 )
+
+func rootNode() js.Value {
+	return rootN.Raw().(js.Value)
+}
 
 func GetByRole(role string) js.Value {
 	return rootNode().Call("querySelector", `[role="`+role+`"]`)

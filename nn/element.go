@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"syscall/js"
 )
 
 // Element represent any HTML tag
@@ -19,7 +18,7 @@ type Element struct {
 
 	// reference to real HTML element in browser
 	// this value will be setup after first render
-	domNode js.Value
+	domNode NativeNode
 	ref     *Ref
 }
 
@@ -28,14 +27,9 @@ type eventInfo struct {
 	isGlobal bool
 }
 
-type cbInfo struct {
-	fn      js.Func
-	closeFn func()
-}
-
 type listenersInfo struct {
 	events          map[eventInfo]func(Event)
-	activeCallbacks map[eventInfo]cbInfo
+	activeCallbacks map[eventInfo]func()
 	parentComponent Component // for re-render from element's callbacks
 }
 
@@ -71,7 +65,7 @@ func (e *Element) addListener(event string, lf func(Event), isGlobal bool) {
 	if e.listeners == nil {
 		e.listeners = &listenersInfo{
 			events:          make(map[eventInfo]func(Event)),
-			activeCallbacks: make(map[eventInfo]cbInfo),
+			activeCallbacks: make(map[eventInfo]func()),
 		}
 	}
 
@@ -271,7 +265,7 @@ type TextNode struct {
 
 	// reference to real HTML element in browser
 	// this value will be setup after first render
-	domNode js.Value
+	domNode NativeNode
 }
 
 func (t *TextNode) isNode() {}

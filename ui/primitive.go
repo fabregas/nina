@@ -11,9 +11,10 @@ type UIProps[T any] struct {
 
 	props         nn.Props
 	children      []nn.AsNode
-	childOverride nn.AsNode // optional for AsChild()
+	childOverride nn.AsNode // optional for RenderAs()
 
-	isInit bool
+	isInit      bool
+	isRendering bool
 }
 
 func (p *UIProps[T]) init(instance T) {
@@ -26,49 +27,49 @@ func (p *UIProps[T]) MergeProps(other *nn.Props) {
 }
 
 func (p *UIProps[T]) Class(c string) T {
-	p.assertInit()
+	p.assert()
 	p.props.Class(c)
 
 	return p.instance
 }
 
 func (p *UIProps[T]) Style(style string) T {
-	p.assertInit()
+	p.assert()
 	p.props.Style(style)
 
 	return p.instance
 }
 
 func (p *UIProps[T]) Attr(k, v string) T {
-	p.assertInit()
+	p.assert()
 	p.props.Attr(k, v)
 
 	return p.instance
 }
 
 func (p *UIProps[T]) Key(key string) T {
-	p.assertInit()
+	p.assert()
 	p.props.Key(key)
 
 	return p.instance
 }
 
 func (p *UIProps[T]) Ref(ref *nn.Ref) T {
-	p.assertInit()
+	p.assert()
 	p.props.Ref(ref)
 
 	return p.instance
 }
 
 func (p *UIProps[T]) On(event string, handler func(nn.Event)) T {
-	p.assertInit()
+	p.assert()
 	p.props.On(event, handler)
 
 	return p.instance
 }
 
 func (p *UIProps[T]) OnGlobal(event string, handler func(nn.Event)) T {
-	p.assertInit()
+	p.assert()
 	p.props.OnGlobal(event, handler)
 
 	return p.instance
@@ -78,14 +79,18 @@ func (p *UIProps[T]) OnClick(handler func(nn.Event)) T {
 	return p.On("click", handler)
 }
 
-func (p *UIProps[T]) assertInit() {
+func (p *UIProps[T]) assert() {
 	if !p.isInit {
 		panic(fmt.Sprintf("%T is not initialized\n", p.instance))
+	}
+
+	if p.isRendering {
+		panic("DX Error: you try to mutate builder on rendering")
 	}
 }
 
 func (p *UIProps[T]) Children(items ...nn.AsNode) T {
-	p.assertInit()
+	p.assert()
 	p.children = append(p.children, items...)
 
 	return p.instance
@@ -115,8 +120,8 @@ func (p *UIProps[T]) Text(t string) T {
 	return p.Children(nn.Text(t))
 }
 
-func (p *UIProps[T]) AsChild(child nn.AsNode) T {
-	p.assertInit()
+func (p *UIProps[T]) RenderAs(child nn.AsNode) T {
+	p.assert()
 	p.childOverride = child
 
 	return p.instance
@@ -142,6 +147,9 @@ type baseBuilder[T builder] struct {
 }
 
 func (b *baseBuilder[T]) AsNode() nn.Node {
+	b.isRendering = true
+	defer func() { b.isRendering = false }()
+
 	ctx := &buildContext{
 		Props:    b.props.Clone(),
 		Children: append([]nn.AsNode(nil), b.children...),

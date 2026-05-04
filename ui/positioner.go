@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"syscall/js"
 
 	"github.com/fabregas/nina/nn"
 )
@@ -54,16 +53,19 @@ func (c *positioner) OnClose(fn func()) *positioner {
 
 func (c *positioner) Close() {
 	content := c.contentRef.Current
-	if content.IsUndefined() || content.IsNull() {
+	if content == nil {
 		return
 	}
 
-	var onAnimationEnd js.Func
-	onAnimationEnd = js.FuncOf(func(this js.Value, args []js.Value) any {
-		content.Call("removeEventListener", "animationend", onAnimationEnd)
-		onAnimationEnd.Release()
+	var cleaner func()
 
-		content.Call("removeAttribute", "data-closed")
+	onAnimationEnd := func(e nn.Event) {
+		if cleaner != nil {
+			cleaner()
+		}
+
+		e.Renderer().RemoveAttribute(content, "data-closed")
+
 		c.Data.isReady = false
 
 		c.Update()
@@ -71,13 +73,12 @@ func (c *positioner) Close() {
 		if c.onClose != nil {
 			c.onClose()
 		}
+	}
 
-		return nil
-	})
-
-	content.Call("addEventListener", "animationend", onAnimationEnd)
-	content.Call("removeAttribute", "data-open")
-	content.Call("setAttribute", "data-closed", "true")
+	r := c.contentRef.Renderer
+	cleaner = r.AddEventListener(content, "animationend", onAnimationEnd)
+	r.RemoveAttribute(content, "data-open")
+	r.SetAttribute(content, "data-closed", "true")
 }
 
 func (c *positioner) View() nn.Node {
@@ -138,10 +139,11 @@ func (c *positioner) onKeyDown(e nn.Event) {
 func (c *positioner) onGlobalClick(e nn.Event) {
 	target := e.Target()
 
+	r := e.Renderer()
 	trigger := c.anchorRef.Current
-	clickedInTrigger := !trigger.IsUndefined() && !trigger.IsNull() && trigger.Call("contains", target).Bool()
+	clickedInTrigger := trigger != nil && r.Contains(trigger, target)
 	content := c.contentRef.Current
-	clickedInContent := !content.IsUndefined() && !content.IsNull() && content.Call("contains", target).Bool()
+	clickedInContent := content != nil && r.Contains(content, target)
 
 	if !clickedInTrigger && !clickedInContent {
 		c.Close()
@@ -154,25 +156,25 @@ func (c *positioner) recalculatePosition() {
 	anchorDOM := c.anchorRef.Current
 	floatingDOM := c.contentRef.Current
 
-	window := js.Global().Get("window")
-
-	if anchorDOM.IsNull() || anchorDOM.IsUndefined() || floatingDOM.IsNull() || floatingDOM.IsUndefined() {
+	if anchorDOM == nil || floatingDOM == nil {
 		return
 	}
 
-	aRect := anchorDOM.Call("getBoundingClientRect")
-	fRect := floatingDOM.Call("getBoundingClientRect")
+	r := c.anchorRef.Renderer
+	aRect := r.GetBoundingClientRect(anchorDOM)
+	fRect := r.GetBoundingClientRect(floatingDOM)
 
-	aTop := aRect.Get("top").Float()
-	aBottom := aRect.Get("bottom").Float()
-	aLeft := aRect.Get("left").Float()
-	aWidth := aRect.Get("width").Float()
-	aHeight := aRect.Get("height").Float()
+	aTop := aRect.Top
+	aBottom := aRect.Bottom
+	aLeft := aRect.Left
+	aWidth := aRect.Width
+	aHeight := aRect.Height
+
 	c.Data.anchorWidth = aWidth
 	c.Data.anchorHeight = aHeight
 
-	fWidth := fRect.Get("width").Float()
-	fHeight := fRect.Get("height").Float()
+	fWidth := fRect.Width
+	fHeight := fRect.Height
 
 	offset := c.offset
 
@@ -217,8 +219,10 @@ func (c *positioner) recalculatePosition() {
 		}
 	}
 
-	vh := window.Get("innerHeight").Float()
-	vw := window.Get("innerWidth").Float()
+	viewport := r.GetViewport()
+
+	vh := viewport.Height
+	vw := viewport.Width
 	spaceAbove := aTop - offset
 	spaceBelow := vh - (aBottom + offset)
 	c.Data.availableWidth = vw
@@ -264,12 +268,9 @@ func (c *positioner) recalculatePosition() {
 	// convert into abs coordinates
 	// ==========================================
 
-	scrollX := window.Get("scrollX").Float()
-	scrollY := window.Get("scrollY").Float()
-
-	c.Data.left = x + scrollX
-	c.Data.top = y + scrollY
-	c.Data.availableHeight += scrollY
+	c.Data.left = x + viewport.ScrollX
+	c.Data.top = y + viewport.ScrollY
+	c.Data.availableHeight += viewport.ScrollY
 	//if c.Data.top < 0 {
 	//	c.Data.top = 0
 	//}

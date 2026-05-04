@@ -1,8 +1,6 @@
 package ui
 
 import (
-	"syscall/js"
-
 	"github.com/fabregas/nina/nn"
 )
 
@@ -18,7 +16,8 @@ const (
 )
 
 var Viewport = nn.NewSignal[Breakpoint](BreakpointXS)
-var resizeCallback js.Func
+
+//var resizeCallback js.Func
 
 func IsMobile(c nn.Component) bool {
 	bp := Viewport.Get(c)
@@ -42,29 +41,18 @@ func getBreakpoint(width int) Breakpoint {
 	}
 }
 
-func initViewport() {
-	window := js.Global().Get("window")
-	if window.IsNull() || window.IsUndefined() {
-		return
-	}
-
-	initialWidth := window.Get("innerWidth").Int()
-	Viewport.Set(getBreakpoint(initialWidth))
-
-	resizeCallback = js.FuncOf(func(this js.Value, args []js.Value) any {
-		width := window.Get("innerWidth").Int()
-		newBp := getBreakpoint(width)
-
-		if newBp != Viewport.Get(nil) {
-			Viewport.Set(newBp)
-		}
-
-		return nil
-	})
-
-	window.Call("addEventListener", "resize", resizeCallback)
-}
-
 func init() {
-	initViewport()
+	nn.RegisterInitHook(func(r nn.Renderer) {
+		vp := r.GetViewport()
+		Viewport.Set(getBreakpoint(int(vp.Width)))
+
+		r.AddEventListener(r.Window(), "resize", func(nn.Event) {
+			vp := r.GetViewport()
+			newBp := getBreakpoint(int(vp.Width))
+
+			if newBp != Viewport.Get(nil) {
+				Viewport.Set(newBp)
+			}
+		})
+	})
 }

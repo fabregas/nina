@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"syscall/js"
 
 	"github.com/fabregas/nina/nn"
 	"github.com/fabregas/nina/ui/icons"
@@ -270,13 +269,13 @@ func SelectController(id string, state *SelectState, options []SelectOption, pla
 
 	globalClick := func(e nn.Event) {
 		target := e.Target()
+		r := e.Renderer()
 
-		doc := js.Global().Get("document")
-		triggerEl := doc.Call("getElementById", triggerID)
-		menuEl := doc.Call("getElementById", menuID)
+		triggerEl := r.GetElementById(triggerID)
+		menuEl := r.GetElementById(menuID)
 
-		clickedInTrigger := !triggerEl.IsNull() && triggerEl.Call("contains", target).Bool()
-		clickedInMenu := !menuEl.IsNull() && menuEl.Call("contains", target).Bool()
+		clickedInTrigger := triggerEl != nil && r.Contains(triggerEl, target)
+		clickedInMenu := menuEl != nil && r.Contains(menuEl, target)
 
 		if !clickedInTrigger && !clickedInMenu {
 			state.IsOpen = false
@@ -288,16 +287,15 @@ func SelectController(id string, state *SelectState, options []SelectOption, pla
 
 		if state.IsOpen {
 			btn := e.CurrentTarget()
-			if !btn.IsNull() {
-				rect := btn.Call("getBoundingClientRect")
+			r := e.Renderer()
+			if btn != nil {
+				rect := r.GetBoundingClientRect(btn)
 
-				window := js.Global().Get("window")
-				scrollY := window.Get("scrollY").Float()
-				scrollX := window.Get("scrollX").Float()
+				viewport := r.GetViewport()
 
-				state.top = rect.Get("bottom").Float() + scrollY + 4
-				state.left = rect.Get("left").Float() + scrollX
-				state.width = rect.Get("width").Float()
+				state.top = rect.Bottom + viewport.ScrollY + 4
+				state.left = rect.Left + viewport.ScrollX
+				state.width = rect.Width
 			}
 		}
 	}

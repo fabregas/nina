@@ -1,14 +1,12 @@
 package nn
 
-import "syscall/js"
-
 // portalNode — special node that tells engine that Child should be rendered inside TargetSelector
 type portalNode struct {
 	targetSelector string // (for example "body" or "#portal-root")
 	child          Node
 
-	domNode         js.Value
-	placeholderNode js.Value
+	domNode         NativeNode
+	placeholderNode NativeNode
 }
 
 func (e *portalNode) isNode() {}

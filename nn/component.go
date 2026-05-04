@@ -2,7 +2,6 @@ package nn
 
 import (
 	"reflect"
-	"syscall/js"
 )
 
 type Component interface {
@@ -19,6 +18,8 @@ type Component interface {
 
 	setContext(typ reflect.Type, val any)
 	getContext(typ reflect.Type) (any, bool)
+	ProvideContext(func() any)
+	getContextProviders() []func() any
 }
 
 // componentNode — is a special це tree node that contain whole component
@@ -28,7 +29,7 @@ type componentNode struct {
 	key        string
 	hash       string
 	lastRender Node
-	parentDOM  js.Value
+	parentDOM  NativeNode
 }
 
 func (c *componentNode) isNode() {}
@@ -64,10 +65,11 @@ type Pure interface {
 }
 
 type BaseComponent struct {
-	cleanups   []func()
-	contextMap map[reflect.Type]any
-	parentC    Component
-	updater    func()
+	cleanups         []func()
+	contextMap       map[reflect.Type]any
+	contextProviders []func() any
+	parentC          Component
+	updater          func()
 }
 
 func (s *BaseComponent) Update() {
@@ -97,6 +99,13 @@ func (c *BaseComponent) setParent(p Component) {
 
 func (c *BaseComponent) parent() Component {
 	return c.parentC
+}
+
+func (b *BaseComponent) ProvideContext(provider func() any) {
+	b.contextProviders = append(b.contextProviders, provider)
+}
+func (b *BaseComponent) getContextProviders() []func() any {
+	return b.contextProviders
 }
 
 func (b *BaseComponent) setContext(typ reflect.Type, val any) {

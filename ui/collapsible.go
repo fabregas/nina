@@ -79,17 +79,22 @@ func Collapsible() *collapsible {
 	c := &collapsible{}
 	c.init(c)
 
-	state := &collapsibleState{
-		isOpen: nn.NewSignal(false),
-	}
-	c.Data = state
+	c.InitState(func() *collapsibleState {
+		return &collapsibleState{
+			isOpen: nn.NewSignal(false),
+		}
+	})
 
-	nn.ProvideContext(c, state)
+	c.ProvideContext(func() any {
+		return c.Data
+	})
 
 	return c
 }
 
 func (c *collapsible) View() nn.Node {
+	nn.ProvideContext(c, c.Data)
+
 	isOpen := c.Data.isOpen.Get(c)
 	stateStr := "closed"
 	if isOpen {

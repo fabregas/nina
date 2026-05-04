@@ -1,11 +1,11 @@
 package nn
 
-import "syscall/js"
-
 type Ref struct {
-	Current js.Value
+	Current NativeNode
+
+	Renderer Renderer
 }
 
 func NewRef() *Ref {
-	return &Ref{Current: js.Undefined()}
+	return &Ref{}
 }

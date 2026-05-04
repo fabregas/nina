@@ -112,7 +112,7 @@ func (b *comboboxInput) View() nn.Node {
 				Attr("data-slot", "combobox-trigger").
 				Class("group-has-data-[slot=combobox-clear]/input-group:hidden data-pressed:bg-transparent").
 				Disabled(b.disabled).
-				AsChild(
+				RenderAs(
 					ComboboxTrigger(),
 				).OnClick(ctx.onToggle),
 		)
@@ -228,7 +228,7 @@ func ComboboxItem(value string) *comboboxItemBuilder {
 	b.baseBuilder = base(b, "div")
 	b.Attr("role", "option").
 		Attr("data-slot", "combobox-item").
-		Attr("value", value).
+		Attr("data-value", value).
 		Class("relative flex w-full cursor-default items-center gap-2.5 rounded-2xl py-2 pr-8 pl-3 text-sm font-medium outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground not-data-[variant=destructive]:data-highlighted:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4")
 
 	return b
@@ -393,7 +393,7 @@ func (b *comboboxChip) View() nn.Node {
 			OnClick(func(e nn.Event) {
 				e.PreventDefault()
 				e.PreventUpdate()
-				val := e.Target().Call("getAttribute", "bind-val").String()
+				val := e.Renderer().GetAttribute(e.Target(), "bind-val")
 
 				ctx.deactivate(val)
 			})
@@ -459,12 +459,13 @@ func Combobox[T any](cfg ComboboxConfig[T]) *combobox[T] {
 			c.Data.isOpen = false
 
 			trigger := c.anchorRef.Current
-			if !trigger.IsUndefined() && !trigger.IsNull() {
-				input := trigger.Call("querySelector", "input")
+			r := c.anchorRef.Renderer
+			if trigger != nil {
+				input := r.QuerySelector(trigger, "input")
 				if !c.config.MultipleSelect && len(c.Data.activeOpts) > 0 {
-					input.Set("value", c.config.ItemToString(c.Data.activeOpts[0]))
+					r.SetAttribute(input, "value", c.config.ItemToString(c.Data.activeOpts[0]))
 				} else {
-					input.Set("value", "")
+					r.SetAttribute(input, "value", "")
 				}
 			}
 
@@ -517,12 +518,12 @@ func (c *combobox[T]) visibleItems() []T {
 	return result
 }
 
-func (c *combobox[T]) BindTrigger(cb func(ctx ComboboxContext[T]) nn.AsNode) *combobox[T] {
+func (c *combobox[T]) Trigger(cb func(ctx ComboboxContext[T]) nn.AsNode) *combobox[T] {
 	c.renderTrigger = cb
 	return c
 }
 
-func (c *combobox[T]) BindContent(cb func(ctx ComboboxContext[T]) nn.AsNode) *combobox[T] {
+func (c *combobox[T]) Content(cb func(ctx ComboboxContext[T]) nn.AsNode) *combobox[T] {
 	c.renderContent = cb
 	return c
 }

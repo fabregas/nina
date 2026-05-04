@@ -4,3 +4,6 @@ gen:
 
 test:
 	GOOS=js GOARCH=wasm go test -exec=wasmbrowsertest -v ./...
+
+bench:
+	go test -v -bench=. -benchmem ./...

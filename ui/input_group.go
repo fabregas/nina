@@ -26,18 +26,19 @@ func InputGroupAddon() *inputGroupAddonBuilder {
 		Class("flex items-center justify-center [&_svg:not([class*='size-'])]:size-4").
 		OnClick(func(e nn.Event) {
 			target := e.Target()
-			closestBtn := target.Call("closest", "button")
-			if !closestBtn.IsNull() && !closestBtn.IsUndefined() {
+			r := e.Renderer()
+			closestBtn := r.Closest(target, "button")
+			if closestBtn == nil {
 				return
 			}
 
-			group := target.Call("closest", "[data-slot='input-group']")
+			group := r.Closest(target, "[data-slot='input-group']")
 
-			if !group.IsNull() && !group.IsUndefined() {
-				input := group.Call("querySelector", "input")
+			if group != nil {
+				input := r.QuerySelector(group, "input")
 
-				if !input.IsNull() && !input.IsUndefined() {
-					input.Call("focus")
+				if input != nil {
+					r.Focus(input)
 				}
 			}
 		})

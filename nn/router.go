@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"strings"
 	"sync"
-	"syscall/js"
 )
 
 type RouteContext struct {
@@ -67,8 +66,6 @@ type Router struct {
 
 	// current 'page' that we render
 	current Component
-
-	initialized bool
 }
 
 // --------------------- global state -----
@@ -78,7 +75,13 @@ var (
 )
 
 func NewRouter() *Router {
-	return &Router{}
+	router := &Router{}
+	return router
+}
+
+func (r *Router) OnInit() {
+	initialPath := nina.renderer.GetCurrentPath()
+	r.resolve(initialPath)
 }
 
 func (r *Router) OnMount() {
@@ -99,14 +102,6 @@ func (r *Router) OnDestroy() {
 }
 
 func (r *Router) View() Node {
-	if !r.initialized {
-		loc := js.Global().Get("window").Get("location")
-		fullPath := loc.Get("pathname").String() + loc.Get("search").String()
-
-		r.resolve(fullPath)
-		r.initialized = true
-	}
-
 	if r.current == nil {
 		return Div()
 	}
@@ -184,19 +179,8 @@ func (r *Router) resolve(rawURL string) {
 }
 
 func Navigate(path string) {
-	global.Get("history").Call("pushState", nil, "", path)
+	nina.renderer.PushState(path)
 	notifyRouters(path)
-}
-
-// should be called once (for example in nn.Mount)
-func initHistory() {
-	cb := js.FuncOf(func(this js.Value, args []js.Value) any {
-		loc := js.Global().Get("window").Get("location")
-		fullPath := loc.Get("pathname").String() + loc.Get("search").String()
-		notifyRouters(fullPath)
-		return nil
-	})
-	global.Get("window").Call("addEventListener", "popstate", cb)
 }
 
 func notifyRouters(path string) {
@@ -260,4 +244,12 @@ func (c *redirectComp) OnMount() {
 
 func Redirect(target string) *redirectComp {
 	return &redirectComp{Target: target}
+}
+
+func init() {
+	RegisterInitHook(func(r Renderer) {
+		_ = r.OnPopState(func(fullPath string) {
+			notifyRouters(fullPath)
+		})
+	})
 }

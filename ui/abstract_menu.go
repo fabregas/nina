@@ -10,25 +10,28 @@ func WrapMenu(menuNode nn.AsNode, onClickCb func(value string)) *nn.Element {
 		panic("wrapMenu can wrap only Element")
 	}
 
+	menuRef := nn.NewRef()
+
 	onContentHover := func(e nn.Event) {
 		e.PreventUpdate()
 
 		target := e.Target()
+		r := e.Renderer()
 
-		item := target.Call("closest", "[role='option']")
-		if item.IsNull() || item.IsUndefined() {
+		item := r.Closest(target, "[role='option']")
+		if item == nil {
 			return
 		}
 
 		container := e.CurrentTarget()
 
-		current := container.Call("querySelector", "[data-highlighted]")
-		if !current.IsNull() && !current.Equal(item) {
-			current.Call("removeAttribute", "data-highlighted")
+		current := r.QuerySelector(container, "[data-highlighted]")
+		if current != nil && !current.Equal(item) {
+			r.RemoveAttribute(current, "data-highlighted")
 		}
 
-		if !item.Call("hasAttribute", "data-highlighted").Bool() {
-			item.Call("setAttribute", "data-highlighted", "")
+		if !r.HasAttribute(item, "data-highlighted") {
+			r.SetAttribute(item, "data-highlighted", "")
 		}
 	}
 
@@ -41,10 +44,11 @@ func WrapMenu(menuNode nn.AsNode, onClickCb func(value string)) *nn.Element {
 		e.PreventUpdate()
 
 		container := e.CurrentTarget()
+		r := e.Renderer()
 
-		current := container.Call("querySelector", "[data-highlighted]")
-		if !current.IsNull() {
-			current.Call("removeAttribute", "data-highlighted")
+		current := r.QuerySelector(container, "[data-highlighted]")
+		if current != nil {
+			r.RemoveAttribute(current, "data-highlighted")
 		}
 	}
 
@@ -52,19 +56,18 @@ func WrapMenu(menuNode nn.AsNode, onClickCb func(value string)) *nn.Element {
 		e.PreventDefault()
 		e.PreventUpdate()
 		container := e.CurrentTarget()
-		current := container.Call("querySelector", "[data-highlighted]")
-		if current.IsNull() {
+		r := e.Renderer()
+
+		current := r.QuerySelector(container, "[data-highlighted]")
+		if current == nil {
 			return
 		}
 
-		val := current.Call("getAttribute", "value").String()
+		val := r.GetAttribute(current, "data-value")
 		if onClickCb != nil {
 			onClickCb(val)
 		}
 	}
-
-	menuRef := nn.NewRef()
-	menuContent.Ref(menuRef)
 
 	onKeyDown := func(e nn.Event) {
 		key := e.Key()
@@ -79,30 +82,29 @@ func WrapMenu(menuNode nn.AsNode, onClickCb func(value string)) *nn.Element {
 		e.PreventDefault()
 		e.PreventUpdate()
 
+		r := e.Renderer()
 		content := menuRef.Current
-		if content.IsUndefined() || content.IsNull() {
+		if content == nil {
 			return
 		}
 
-		items := content.Call("querySelectorAll", "[role='option']")
-		length := items.Get("length").Int()
+		items := r.QuerySelectorAll(content, "[role='option']")
+		length := len(items)
 		if length == 0 {
 			return
 		}
 
 		currentIndex := -1
-		for i := 0; i < length; i++ {
-			if items.Index(i).Call("hasAttribute", "data-highlighted").Bool() {
+		for i, li := range items {
+			if r.HasAttribute(li, "data-highlighted") {
 				currentIndex = i
 				break
 			}
 		}
 
-		if currentIndex >= 0 && key == "Enter" {
-			val := items.Index(currentIndex).Call("getAttribute", "value").String()
-			if onClickCb != nil {
-				onClickCb(val)
-			}
+		if currentIndex >= 0 && key == "Enter" && onClickCb != nil {
+			val := r.GetAttribute(items[currentIndex], "data-value")
+			onClickCb(val)
 			return
 		}
 
@@ -120,17 +122,17 @@ func WrapMenu(menuNode nn.AsNode, onClickCb func(value string)) *nn.Element {
 		}
 
 		if currentIndex != -1 {
-			items.Index(currentIndex).Call("removeAttribute", "data-highlighted")
+			r.RemoveAttribute(items[currentIndex], "data-highlighted")
 		}
 
-		newItem := items.Index(newIndex)
-		newItem.Call("setAttribute", "data-highlighted", "")
+		newItem := items[newIndex]
+		r.SetAttribute(newItem, "data-highlighted", "")
 
-		scrollOptions := map[string]any{"block": "nearest"}
-		newItem.Call("scrollIntoView", scrollOptions)
+		r.ScrollIntoView(newItem, map[string]any{"block": "nearest"})
 	}
 
 	return menuContent.
+		Ref(menuRef).
 		On("pointermove", onContentHover).
 		On("mousedown", onMouseDown).
 		On("mouseleave", onMouseLeave).
