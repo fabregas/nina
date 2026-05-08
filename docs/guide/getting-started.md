@@ -128,6 +128,5 @@ Open `http://localhost:8080` in your browser. You should see a perfectly styled,
 
 ## Next Steps
 
-- Explore the [Architecture](/guide/architecture) to understand the 4-layer system.
+- Explore the [Architecture](/guide/architecture) to understand the system.
 - Check out the [Component Gallery](/components/button) for ready-to-use widgets.
-- Learn about [State Management](/guide/state) in Nina UI.

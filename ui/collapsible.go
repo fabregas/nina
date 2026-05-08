@@ -73,6 +73,8 @@ func (c *collapsibleContent) View() nn.Node {
 type collapsible struct {
 	uiComponent[*collapsible]
 	nn.State[collapsibleState]
+
+	initOpen bool
 }
 
 func Collapsible() *collapsible {
@@ -85,16 +87,25 @@ func Collapsible() *collapsible {
 		}
 	})
 
-	c.ProvideContext(func() any {
+	nn.ProvideContextDefer(c, func() *collapsibleState {
 		return c.Data
 	})
 
 	return c
 }
 
-func (c *collapsible) View() nn.Node {
-	nn.ProvideContext(c, c.Data)
+func (c *collapsible) IsOpen(isOpen bool) *collapsible {
+	c.initOpen = isOpen
+	return c
+}
 
+func (c *collapsible) OnMount() {
+	if c.initOpen {
+		c.Data.isOpen.Set(true)
+	}
+}
+
+func (c *collapsible) View() nn.Node {
 	isOpen := c.Data.isOpen.Get(c)
 	stateStr := "closed"
 	if isOpen {

@@ -42,6 +42,7 @@ type Renderer interface {
 
 	RootNode() NativeNode
 	Window() NativeNode
+	ToggleHTMLClass(class string)
 
 	PushState(path string)
 	OnPopState(handler func(path string)) func()

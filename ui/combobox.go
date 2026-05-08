@@ -423,7 +423,7 @@ type ComboboxContext[T any] struct {
 	VisibleItems  []T
 	SelectedItems []T
 	IsActive      func(item T) bool
-	MenuPosition  *positionerContext
+	MenuPosition  *positionerContext[*combobox[T]]
 }
 
 type comboboxState[T any] struct {
@@ -472,9 +472,10 @@ func Combobox[T any](cfg ComboboxConfig[T]) *combobox[T] {
 			c.Update()
 		})
 
-	c.pos.context().Flip().
-		AlignStart().
-		Offset(8)
+	posCtx := getPositionerContext(c, c.pos)
+	posCtx.Flip()
+	posCtx.AlignStart()
+	posCtx.Offset(8)
 
 	intCtx := &comboboxInternalCtx{
 		anchorRef: c.anchorRef,
@@ -547,7 +548,7 @@ func (c *combobox[T]) View() nn.Node {
 		VisibleItems:  c.visibleItems(),
 		SelectedItems: c.Data.activeOpts,
 		IsActive:      c.isActive,
-		MenuPosition:  c.pos.context(),
+		MenuPosition:  getPositionerContext(c, c.pos),
 	}
 
 	var children []nn.AsNode

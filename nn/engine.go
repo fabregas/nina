@@ -191,9 +191,7 @@ func (e *engine) createDOM(parentDOM NativeNode, vnode Node) NativeNode {
 		n.comp.setParent(prevComponent)
 		n.parentDOM = parentDOM
 
-		for _, p := range n.comp.getContextProviders() {
-			ProvideContext(n.comp, p())
-		}
+		n.comp.resolveContexts()
 
 		if i, ok := n.comp.(Initer); ok {
 			i.OnInit()
@@ -351,21 +349,19 @@ func (e *engine) patch(parentDOM NativeNode, oldNode, newNode Node) {
 		newComp := newNode.(*componentNode)
 		oldComp := oldNode.(*componentNode)
 
-		newComp.parentDOM = parentDOM
-		if oldComp.comp != newComp.comp {
-			e.unregisterComp(oldComp.comp)
-
-			for _, p := range newComp.comp.getContextProviders() {
-				ProvideContext(newComp.comp, p())
-			}
-		}
-		e.registerComp(newComp.comp, newComp)
-
 		if newCarrier, ok := newComp.comp.(stateCarrier); ok {
 			oldCarrier := oldComp.comp.(stateCarrier)
 			// copy old state into new component
 			newCarrier.importState(oldCarrier.exportState())
 		}
+
+		newComp.parentDOM = parentDOM
+		if oldComp.comp != newComp.comp {
+			e.unregisterComp(oldComp.comp)
+
+			newComp.comp.resolveContexts()
+		}
+		e.registerComp(newComp.comp, newComp)
 
 		newUpdater := func() { e.scheduleUpdate(newComp.comp) }
 		newComp.comp.setUpdater(newUpdater)

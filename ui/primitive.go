@@ -224,6 +224,8 @@ func (c *uiComponent[T]) ApplyProps(defaultRoot nn.Node) nn.Node {
 		internalProps.Merge(customerProps)
 		if receiver, ok := c.childOverride.(interface{ MergeProps(*nn.Props) }); ok {
 			receiver.MergeProps(&internalProps)
+		} else if el, ok := c.childOverride.(*nn.Element); ok {
+			internalProps.ApplyTo(el)
 		}
 
 		return c.childOverride.AsNode()

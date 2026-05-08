@@ -18,8 +18,8 @@ type Component interface {
 
 	setContext(typ reflect.Type, val any)
 	getContext(typ reflect.Type) (any, bool)
-	ProvideContext(func() any)
-	getContextProviders() []func() any
+	addContextProvider(func() (reflect.Type, any))
+	resolveContexts()
 }
 
 // componentNode — is a special це tree node that contain whole component
@@ -67,7 +67,7 @@ type Pure interface {
 type BaseComponent struct {
 	cleanups         []func()
 	contextMap       map[reflect.Type]any
-	contextProviders []func() any
+	contextProviders []func() (reflect.Type, any)
 	parentC          Component
 	updater          func()
 }
@@ -101,11 +101,15 @@ func (c *BaseComponent) parent() Component {
 	return c.parentC
 }
 
-func (b *BaseComponent) ProvideContext(provider func() any) {
-	b.contextProviders = append(b.contextProviders, provider)
+func (b *BaseComponent) addContextProvider(p func() (reflect.Type, any)) {
+	b.contextProviders = append(b.contextProviders, p)
 }
-func (b *BaseComponent) getContextProviders() []func() any {
-	return b.contextProviders
+
+func (b *BaseComponent) resolveContexts() {
+	for _, provider := range b.contextProviders {
+		typ, val := provider()
+		b.setContext(typ, val)
+	}
 }
 
 func (b *BaseComponent) setContext(typ reflect.Type, val any) {
@@ -129,6 +133,18 @@ func ProvideContext[T any](c Component, value T) {
 	typ := reflect.TypeOf(dummy).Elem()
 
 	c.setContext(typ, value)
+}
+
+func ProvideContextDefer[T any](c Component, provider func() T) {
+	var dummy *T
+
+	typ := reflect.TypeOf(dummy).Elem()
+
+	deferred := func() (reflect.Type, any) {
+		return typ, provider()
+	}
+
+	c.addContextProvider(deferred)
 }
 
 func GetContext[T any](startNode Component) T {

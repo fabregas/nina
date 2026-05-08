@@ -95,3 +95,14 @@ func Raw(tag, htmlString string) *Element {
 	e.rawHTML = htmlString
 	return e
 }
+
+// Link element for local navigation
+func Link(path string) *Element {
+	return A().
+		Attr("href", path).
+		On("click", func(e Event) {
+			e.PreventDefault()
+
+			Navigate(path)
+		})
+}

@@ -93,7 +93,16 @@ func (p *Props) Merge(other *Props) {
 		p.Attr(k, v)
 	}
 	for evt, handler := range other.events {
+		//	if oldH, ok := p.events[evt]; ok {
+		//		newHandler := func(e Event) {
+		//			oldH(e)
+		//			handler(e)
+		//		}
+		//		p.On(evt, newHandler)
+		//	} else {
 		p.On(evt, handler)
+		//	}
+
 	}
 	for evt, handler := range other.globalEvents {
 		p.OnGlobal(evt, handler)

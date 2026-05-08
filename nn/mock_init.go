@@ -164,6 +164,8 @@ func (d *mockRenderer) waitNextFrame() <-chan struct{} {
 	return ch
 }
 
+func (d *mockRenderer) ToggleHTMLClass(class string) {}
+
 func (d *mockRenderer) PushState(path string) {}
 
 func (d *mockRenderer) OnPopState(handler func(path string)) func() {

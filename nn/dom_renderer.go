@@ -160,8 +160,13 @@ func (d *domRenderer) InsertBefore(parent, child, anchor NativeNode) {
 
 func (d *domRenderer) Remove(node NativeNode) {
 	n := node.(domNode).Value
-	if !n.IsNull() && !n.IsUndefined() {
+
+	removeFunc := n.Get("remove")
+
+	if removeFunc.Type() == js.TypeFunction {
 		n.Call("remove")
+	} else {
+		n.Set("textContent", "")
 	}
 }
 
@@ -376,6 +381,11 @@ func (d *domRenderer) GetViewport() Viewport {
 		Width:   window.Get("innerWidth").Float(),
 		Height:  window.Get("innerHeight").Float(),
 	}
+}
+
+func (d *domRenderer) ToggleHTMLClass(class string) {
+	classList := d.doc.Get("documentElement").Get("classList")
+	classList.Call("toggle", class)
 }
 
 func (d *domRenderer) initRequestAnimationFrame(cb func()) (reqNext func(), cleaner func()) {

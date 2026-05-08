@@ -276,55 +276,56 @@ func (c *positioner) recalculatePosition() {
 	//}
 }
 
-type positionerContext struct {
-	pos *positioner
+type positionerContext[T any] struct {
+	instance T
+	pos      *positioner
 }
 
-func (c *positionerContext) SideTop() *positionerContext {
+func (c *positionerContext[T]) SideTop() T {
 	c.pos.side = "top"
-	return c
+	return c.instance
 }
 
-func (c *positionerContext) SideBottom() *positionerContext {
+func (c *positionerContext[T]) SideBottom() T {
 	c.pos.side = "bottom"
-	return c
+	return c.instance
 }
 
-func (c *positionerContext) SideLeft() *positionerContext {
+func (c *positionerContext[T]) SideLeft() T {
 	c.pos.side = "inline-start"
-	return c
+	return c.instance
 }
 
-func (c *positionerContext) SideRight() *positionerContext {
+func (c *positionerContext[T]) SideRight() T {
 	c.pos.side = "inline-end"
-	return c
+	return c.instance
 }
 
-func (c *positionerContext) AlignStart() *positionerContext {
+func (c *positionerContext[T]) AlignStart() T {
 	c.pos.align = "start"
-	return c
+	return c.instance
 }
 
-func (c *positionerContext) AlignCenter() *positionerContext {
+func (c *positionerContext[T]) AlignCenter() T {
 	c.pos.align = "center"
-	return c
+	return c.instance
 }
 
-func (c *positionerContext) AlignEnd() *positionerContext {
+func (c *positionerContext[T]) AlignEnd() T {
 	c.pos.align = "end"
-	return c
+	return c.instance
 }
 
-func (c *positionerContext) Flip() *positionerContext {
+func (c *positionerContext[T]) Flip() T {
 	c.pos.flip = true
-	return c
+	return c.instance
 }
 
-func (c *positionerContext) Offset(o float64) *positionerContext {
+func (c *positionerContext[T]) Offset(o float64) T {
 	c.pos.offset = o
-	return c
+	return c.instance
 }
 
-func (c *positioner) context() *positionerContext {
-	return &positionerContext{pos: c}
+func getPositionerContext[T any](instance T, pos *positioner) *positionerContext[T] {
+	return &positionerContext[T]{instance: instance, pos: pos}
 }

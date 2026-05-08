@@ -11,7 +11,7 @@ hero:
       link: /guide/getting-started
     - theme: alt
       text: View Components
-      link: /components/button
+      link: /ui/button
 ---
 
 ## Why Choose Nina UI?
@@ -42,19 +42,17 @@ Actual DOM mutations are expensive. Nina UI performs an in-memory diff and touch
 
 ---
 
-## 🏗️ The Four-Layer Architecture
+## 🏗️ The Architecture
 Nina UI is designed with strict boundaries and a clear separation of concerns, ensuring your codebase remains maintainable as it scales.
 
 #### 1. The Core Layer (DOM & Lifecycle)
 The foundation. This layer handles direct communication with the browser via `syscall/js`. It manages raw HTML elements, memory mapping, node lifecycle, and the core diffing/patching algorithm.
 
-#### 2. The UI Primitives Layer
-The building blocks. A collection of stateless, highly customizable structural elements. They apply core Tailwind CSS classes and provide the structural backbone for your design system without dictating logic.
-
-#### 3. The Smart Components Layer
-The brain of the UI. These are your fully realized widgets (e.g., `Dropdown`, `Modal`, `DataTable`). They encapsulate complex internal state, handle browser events, and manage their own isolated re-rendering logic.
+#### 2. The Unified Component Layer
+The core of your design system. This layer seamlessly combines Tailwind-styled structural primitives with reactive logic. Whether you need a simple, stateless building block or a fully encapsulated, self-re-rendering widget (like a Dropdown or Dialog), everything shares the same cohesive API. Components dynamically scale from purely visual elements to state-aware, event-driven widgets powered by Signals.
 
 #### 4. The Application Layer
 Your domain. This is where you compose the primitives and smart components to build your actual application screens. Focus entirely on your business logic, knowing the lower layers are handling the heavy lifting.
+
 
 
