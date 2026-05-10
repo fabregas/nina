@@ -24,6 +24,8 @@ export default defineConfig({
           { text: 'Architecture', link: '/guide/architecture' },
           { text: 'Signals', link: '/guide/signals' },
           { text: 'State', link: '/guide/state' },
+          { text: 'Context', link: '/guide/context' },
+          { text: 'State management', link: '/guide/state_mgmt' },
         ]
       },
       {
