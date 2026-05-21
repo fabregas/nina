@@ -21,8 +21,9 @@ type engine struct {
 
 	currentRenderingComponent Component
 
-	renderer Renderer
-	storage  LocalStorage
+	renderer         Renderer
+	documentRenderer DocumentRenderer
+	storage          LocalStorage
 }
 
 func (e *engine) registerComp(c Component, node *componentNode) {
@@ -136,9 +137,11 @@ func (e *engine) createDOM(parentDOM NativeNode, vnode Node) NativeNode {
 	case *Element:
 		el := e.createElement(n.tag)
 		n.domNode = el
-		if n.ref != nil {
-			n.ref.Current = el
-			n.ref.Renderer = e.renderer
+		if len(n.refs) > 0 {
+			for _, r := range n.refs {
+				r.Current = el
+				r.Renderer = e.renderer
+			}
 		}
 
 		// 1. set classes and attributes
@@ -251,7 +254,6 @@ func (e *engine) addEventListener(el NativeNode, listeners *listenersInfo, eInfo
 		if event.needUpdate() {
 			e.scheduleUpdate(listeners.parentComponent)
 		}
-
 	}
 
 	var cleaner func()
@@ -268,8 +270,8 @@ func (e *engine) addEventListener(el NativeNode, listeners *listenersInfo, eInfo
 	} else {
 		cleaner = e.renderer.AddEventListener(el, eInfo.name, handlerFunc)
 	}
-
 	listeners.activeCallbacks[eInfo] = cleaner
+
 }
 
 // patch compare old and new node and makes changes into parentDOM
@@ -322,9 +324,11 @@ func (e *engine) patch(parentDOM NativeNode, oldNode, newNode Node) {
 	case *Element:
 		newEl := newNode.(*Element)
 		newEl.domNode = old.domNode
-		if newEl.ref != nil {
-			newEl.ref.Current = old.domNode
-			newEl.ref.Renderer = e.renderer
+		if len(newEl.refs) > 0 {
+			for _, r := range newEl.refs {
+				r.Current = old.domNode
+				r.Renderer = e.renderer
+			}
 		}
 		e.patchEvents(old.domNode, old, newEl)
 
@@ -811,6 +815,10 @@ func WaitNextFrame() <-chan struct{} {
 
 func Storage() LocalStorage {
 	return nina.storage
+}
+
+func Doc() DocumentRenderer {
+	return nina.documentRenderer
 }
 
 // init hooks

@@ -383,9 +383,9 @@ func (d *domRenderer) GetViewport() Viewport {
 	}
 }
 
-func (d *domRenderer) ToggleHTMLClass(class string) {
+func (d *domRenderer) ToggleHTMLClass(class string, force bool) {
 	classList := d.doc.Get("documentElement").Get("classList")
-	classList.Call("toggle", class)
+	classList.Call("toggle", class, force)
 }
 
 func (d *domRenderer) initRequestAnimationFrame(cb func()) (reqNext func(), cleaner func()) {

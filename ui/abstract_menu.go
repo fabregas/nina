@@ -20,6 +20,12 @@ func WrapMenu(menuNode nn.AsNode, onClickCb func(value string)) *nn.Element {
 
 		item := r.Closest(target, "[role='option']")
 		if item == nil {
+			container := e.CurrentTarget()
+
+			current := r.QuerySelector(container, "[data-highlighted]")
+			if current != nil && !current.Equal(item) {
+				r.RemoveAttribute(current, "data-highlighted")
+			}
 			return
 		}
 

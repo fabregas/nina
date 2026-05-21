@@ -7,6 +7,11 @@ type NativeNode interface {
 	Raw() any
 }
 
+type DocumentRenderer interface {
+	ToggleHTMLClass(className string, force bool)
+	//SetTitle(title string)
+}
+
 type Renderer interface {
 	CreateElement(tag string) NativeNode
 	CreateElementNS(ns, tag string) NativeNode
@@ -42,7 +47,6 @@ type Renderer interface {
 
 	RootNode() NativeNode
 	Window() NativeNode
-	ToggleHTMLClass(class string)
 
 	PushState(path string)
 	OnPopState(handler func(path string)) func()

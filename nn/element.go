@@ -19,7 +19,7 @@ type Element struct {
 	// reference to real HTML element in browser
 	// this value will be setup after first render
 	domNode NativeNode
-	ref     *Ref
+	refs    []*Ref
 }
 
 type eventInfo struct {
@@ -50,7 +50,13 @@ func (e *Element) isNil() bool {
 }
 
 func (e *Element) Ref(r *Ref) *Element {
-	e.ref = r
+	for _, ro := range e.refs {
+		if ro == r {
+			return e
+		}
+	}
+	e.refs = append(e.refs, r)
+
 	return e
 }
 
@@ -69,7 +75,16 @@ func (e *Element) addListener(event string, lf func(Event), isGlobal bool) {
 		}
 	}
 
-	e.listeners.events[eventInfo{name: event, isGlobal: isGlobal}] = lf
+	ei := eventInfo{name: event, isGlobal: isGlobal}
+	if handler, ok := e.listeners.events[ei]; ok {
+		newHandler := func(e Event) {
+			handler(e)
+			lf(e)
+		}
+		e.listeners.events[ei] = newHandler
+	} else {
+		e.listeners.events[ei] = lf
+	}
 }
 
 func (e *Element) compClasses() {
@@ -107,7 +122,7 @@ func (e *Element) Clone() *Element {
 		classes: e.classes,
 		key:     e.key,
 		rawHTML: e.rawHTML,
-		ref:     e.ref,
+		refs:    e.refs,
 	}
 
 	if e.attrs != nil {
@@ -130,12 +145,45 @@ func (e *Element) Clone() *Element {
 	return clone
 }
 
+func (e *Element) Merge(other *Element) *Element {
+	if other.classes != "" {
+		e.Class(other.classes)
+	}
+
+	for k, v := range other.attrs {
+		e.Attr(k, v)
+	}
+
+	if other.listeners != nil {
+		for ei, handler := range other.listeners.events {
+			e.addListener(ei.name, handler, ei.isGlobal)
+		}
+	}
+
+	if other.key != "" {
+		e.key = other.key
+
+	}
+	for _, r := range other.refs {
+		e.Ref(r)
+	}
+
+	return e
+}
+
 func (e *Element) ClassFunc(f func() string) *Element {
 	return e.Class(f())
 }
 
 func (e *Element) Attr(key, value string) *Element {
 	e.addAttr(key, value)
+	return e
+}
+
+func (e *Element) AttrIf(condition bool, key, value string) *Element {
+	if condition {
+		e.addAttr(key, value)
+	}
 	return e
 }
 

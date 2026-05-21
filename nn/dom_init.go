@@ -9,6 +9,7 @@ func init() {
 	}
 
 	nina.renderer = newDomRenderer()
+	nina.documentRenderer = newDomRenderer()
 	nina.storage = newDomStorage()
 	nina.reqDomUpdate, _ = nina.renderer.initRequestAnimationFrame(nina.performUpdates)
 }

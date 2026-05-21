@@ -132,6 +132,7 @@ func (e *fieldErrorBuilder) build(ctx *buildContext) {
 
 	if len(uniqueErrors) == 1 {
 		ctx.Children = append(ctx.Children, nn.Text(uniqueErrors[0]))
+		return
 	}
 
 	var listItems []nn.AsNode

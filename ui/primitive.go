@@ -9,7 +9,7 @@ import (
 type UIProps[T any] struct {
 	instance T
 
-	props         nn.Props
+	props         nn.Element
 	children      []nn.AsNode
 	childOverride nn.AsNode // optional for RenderAs()
 
@@ -22,7 +22,7 @@ func (p *UIProps[T]) init(instance T) {
 	p.isInit = true
 }
 
-func (p *UIProps[T]) MergeProps(other *nn.Props) {
+func (p *UIProps[T]) MergeProps(other *nn.Element) {
 	p.props.Merge(other)
 }
 
@@ -43,6 +43,15 @@ func (p *UIProps[T]) Style(style string) T {
 func (p *UIProps[T]) Attr(k, v string) T {
 	p.assert()
 	p.props.Attr(k, v)
+
+	return p.instance
+}
+
+func (p *UIProps[T]) AttrIf(condition bool, k, v string) T {
+	p.assert()
+	if condition {
+		p.props.Attr(k, v)
+	}
 
 	return p.instance
 }
@@ -132,7 +141,7 @@ func (p *UIProps[T]) RenderAs(child nn.AsNode) T {
 // ==========================================
 
 type buildContext struct {
-	Props    *nn.Props
+	Props    *nn.Element
 	Children []nn.AsNode
 }
 
@@ -160,19 +169,19 @@ func (b *baseBuilder[T]) AsNode() nn.Node {
 	var coreNode nn.Node
 
 	if b.childOverride != nil {
-		if receiver, ok := b.childOverride.(interface{ MergeProps(*nn.Props) }); ok {
+		if receiver, ok := b.childOverride.(interface{ MergeProps(*nn.Element) }); ok {
 			receiver.MergeProps(ctx.Props)
 			coreNode = b.childOverride.AsNode()
 		} else {
 			node := b.childOverride.AsNode()
 			if el, ok := node.(*nn.Element); ok {
-				ctx.Props.ApplyTo(el)
+				el.Merge(ctx.Props)
 				coreNode = el
 			}
 		}
 	} else {
 		freshEl := nn.Tag(b.tag)
-		ctx.Props.ApplyTo(freshEl)
+		freshEl.Merge(ctx.Props)
 		freshEl.Children(ctx.Children...)
 
 		coreNode = freshEl
@@ -216,23 +225,23 @@ func (c *uiComponent[T]) ApplyProps(defaultRoot nn.Node) nn.Node {
 	customerProps := c.props.Clone()
 
 	if c.childOverride != nil {
-		var internalProps nn.Props
+		internalProps := &nn.Element{}
 		if el, ok := defaultRoot.(*nn.Element); ok {
-			internalProps.MergeFromElement(el)
+			internalProps = el.Clone()
 		}
 
 		internalProps.Merge(customerProps)
-		if receiver, ok := c.childOverride.(interface{ MergeProps(*nn.Props) }); ok {
-			receiver.MergeProps(&internalProps)
+		if receiver, ok := c.childOverride.(interface{ MergeProps(*nn.Element) }); ok {
+			receiver.MergeProps(internalProps)
 		} else if el, ok := c.childOverride.(*nn.Element); ok {
-			internalProps.ApplyTo(el)
+			el.Merge(internalProps)
 		}
 
 		return c.childOverride.AsNode()
 	}
 
 	if el, ok := defaultRoot.(*nn.Element); ok {
-		customerProps.ApplyTo(el)
+		el.Merge(customerProps)
 		return el
 	}
 

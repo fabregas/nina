@@ -33,3 +33,7 @@ func (s *Signal[T]) Set(newValue T) {
 		sub.Update()
 	}
 }
+
+type ReadableSignal[T any] interface {
+	Get(subscriber Component) T
+}
